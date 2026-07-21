@@ -1,0 +1,29 @@
+# Build output
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Application data (generated at runtime)
+data/
+logs/
+backups/
+exports/
+
+# Package manager
+node_modules/
+
+# Antigravity / Gemini
+.agents/
