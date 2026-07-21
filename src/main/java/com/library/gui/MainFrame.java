@@ -13,15 +13,19 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Main application frame with sidebar, top bar with theme toggle, and card-layout content.
+ * Root application frame: sidebar navigation, top tool-bar with
+ * theme toggle, and card-layout content area.
+ *
+ * @author University Central Library — Software Engineering Division
+ * @version 1.0.0
  */
 public final class MainFrame extends JFrame {
 
     private final LibraryFacade facade;
-    private final CardLayout cardLayout;
-    private final JPanel contentPanel;
-    private CardLayout rootLayout;
-    private JPanel rootPanel;
+    private final CardLayout cards;
+    private final JPanel content;
+    private CardLayout rootCards;
+    private JPanel root;
 
     private LoginPanel loginPanel;
     private DashboardPanel dashboardPanel;
@@ -31,308 +35,289 @@ public final class MainFrame extends JFrame {
     private FinesPanel finesPanel;
     private SearchPanel searchPanel;
 
-    private Session currentSession;
-    private final Map<String, NavItem> navItems = new LinkedHashMap<>();
-    private String activeNav = "Dashboard";
-    private JPanel sidebar;
-    private JPanel topBar;
-    private JPanel mainView;
+    private Session session;
+    private final Map<String, NavItem> nav = new LinkedHashMap<>();
+    private String active = "Dashboard";
+    private JPanel sidebar, topBar, main;
 
     public MainFrame() {
         facade = new LibraryFacade();
         ApplicationBootstrap.initialise(facade);
 
-        setTitle("Library Management System \u2014 University Central Library");
+        setTitle("Library Management System");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1200, 750));
-        setSize(1400, 850);
+        setSize(1440, 860);
         setLocationRelativeTo(null);
 
-        rootLayout = new CardLayout();
-        rootPanel = new JPanel(rootLayout);
+        rootCards = new CardLayout();
+        root = new JPanel(rootCards);
 
-        // Login
-        loginPanel = new LoginPanel(facade, this::onLoginSuccess);
-        rootPanel.add(loginPanel, "LOGIN");
+        loginPanel = new LoginPanel(facade, this::onLogin);
+        root.add(loginPanel, "LOGIN");
 
-        // Main view
-        mainView = new JPanel(new BorderLayout());
+        main = new JPanel(new BorderLayout());
+        sidebar = sidebar();
+        main.add(sidebar, BorderLayout.WEST);
 
-        // Sidebar
-        sidebar = buildSidebar();
-        mainView.add(sidebar, BorderLayout.WEST);
+        JPanel center = new JPanel(new BorderLayout());
+        topBar = topBar();
+        center.add(topBar, BorderLayout.NORTH);
 
-        // Center = topBar + content
-        JPanel centerArea = new JPanel(new BorderLayout());
-        topBar = buildTopBar();
-        centerArea.add(topBar, BorderLayout.NORTH);
-
-        cardLayout = new CardLayout();
-        contentPanel = new JPanel(cardLayout);
+        cards = new CardLayout();
+        content = new JPanel(cards);
+        content.setBackground(AppTheme.bg());
 
         dashboardPanel = new DashboardPanel(facade);
-        booksPanel = new BooksPanel(facade);
-        studentsPanel = new StudentsPanel(facade);
-        borrowPanel = new BorrowPanel(facade);
-        finesPanel = new FinesPanel(facade);
-        searchPanel = new SearchPanel(facade);
+        booksPanel     = new BooksPanel(facade);
+        studentsPanel  = new StudentsPanel(facade);
+        borrowPanel    = new BorrowPanel(facade);
+        finesPanel     = new FinesPanel(facade);
+        searchPanel    = new SearchPanel(facade);
 
-        contentPanel.add(dashboardPanel, "Dashboard");
-        contentPanel.add(booksPanel, "Books");
-        contentPanel.add(studentsPanel, "Students");
-        contentPanel.add(borrowPanel, "Borrows");
-        contentPanel.add(finesPanel, "Fines");
-        contentPanel.add(searchPanel, "Search");
+        content.add(dashboardPanel, "Dashboard");
+        content.add(booksPanel,     "Books");
+        content.add(studentsPanel,  "Students");
+        content.add(borrowPanel,    "Circulation");
+        content.add(finesPanel,     "Fines");
+        content.add(searchPanel,    "Search");
 
-        centerArea.add(contentPanel, BorderLayout.CENTER);
-        mainView.add(centerArea, BorderLayout.CENTER);
+        center.add(content, BorderLayout.CENTER);
+        main.add(center, BorderLayout.CENTER);
+        root.add(main, "MAIN");
 
-        rootPanel.add(mainView, "MAIN");
-        setContentPane(rootPanel);
-        rootLayout.show(rootPanel, "LOGIN");
+        setContentPane(root);
+        rootCards.show(root, "LOGIN");
 
-        // Theme listener - rebuild everything on toggle
-        AppTheme.addThemeListener(this::applyTheme);
-        applyThemeColors();
+        AppTheme.onThemeChange(this::applyTheme);
+        paintTheme();
     }
 
-    private void onLoginSuccess() {
-        currentSession = loginPanel.getSession();
+    /* ── Navigation ──────────────────────────────────────────────── */
+
+    private void onLogin() {
+        session = loginPanel.getSession();
         refreshAll();
-        rootLayout.show(rootPanel, "MAIN");
-        navigateTo("Dashboard");
+        rootCards.show(root, "MAIN");
+        go("Dashboard");
+    }
+
+    private void go(String name) {
+        active = name;
+        cards.show(content, name);
+        switch (name) {
+            case "Dashboard"   -> dashboardPanel.refresh(session);
+            case "Books"       -> booksPanel.refresh(session);
+            case "Students"    -> studentsPanel.refresh(session);
+            case "Circulation" -> borrowPanel.refresh(session);
+            case "Fines"       -> finesPanel.refresh(session);
+            case "Search"      -> searchPanel.refresh(session);
+        }
+        nav.values().forEach(NavItem::refresh);
+        setTopTitle(name);
     }
 
     private void refreshAll() {
-        dashboardPanel.refresh(currentSession);
-        booksPanel.refresh(currentSession);
-        studentsPanel.refresh(currentSession);
-        borrowPanel.refresh(currentSession);
-        finesPanel.refresh(currentSession);
-        searchPanel.refresh(currentSession);
+        dashboardPanel.refresh(session);
+        booksPanel.refresh(session);
+        studentsPanel.refresh(session);
+        borrowPanel.refresh(session);
+        finesPanel.refresh(session);
+        searchPanel.refresh(session);
     }
 
-    private void navigateTo(String name) {
-        activeNav = name;
-        cardLayout.show(contentPanel, name);
-        switch (name) {
-            case "Dashboard" -> dashboardPanel.refresh(currentSession);
-            case "Books" -> booksPanel.refresh(currentSession);
-            case "Students" -> studentsPanel.refresh(currentSession);
-            case "Borrows" -> borrowPanel.refresh(currentSession);
-            case "Fines" -> finesPanel.refresh(currentSession);
-            case "Search" -> searchPanel.refresh(currentSession);
-        }
-        navItems.values().forEach(NavItem::updateState);
-        updateTopBarTitle(name);
-    }
+    /* ── Top bar ─────────────────────────────────────────────────── */
 
-    private JPanel buildTopBar() {
+    private JPanel topBar() {
         JPanel bar = new JPanel(new BorderLayout()) {
             @Override protected void paintComponent(Graphics g) {
-                AppTheme.applyAntiAliasing(g);
-                g.setColor(AppTheme.bgSecondary());
+                AppTheme.aa(g);
+                g.setColor(AppTheme.bgCard());
                 g.fillRect(0, 0, getWidth(), getHeight());
                 g.setColor(AppTheme.border());
                 g.fillRect(0, getHeight() - 1, getWidth(), 1);
             }
         };
-        bar.setPreferredSize(new Dimension(0, 52));
-        bar.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 16));
+        bar.setPreferredSize(new Dimension(0, 56));
+        bar.setBorder(BorderFactory.createEmptyBorder(0, 28, 0, 20));
         bar.setOpaque(false);
 
-        JLabel pageTitle = new JLabel("Dashboard");
-        pageTitle.setFont(AppTheme.FONT_SUBHEADING);
-        pageTitle.setForeground(AppTheme.textPrimary());
-        pageTitle.setName("pageTitle");
-        bar.add(pageTitle, BorderLayout.WEST);
+        JLabel t = new JLabel("Dashboard");
+        t.setFont(AppTheme.H3); t.setForeground(AppTheme.fg());
+        t.setName("_title");
+        bar.add(t, BorderLayout.WEST);
 
-        // Right side: theme toggle + user info
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
-        rightPanel.setOpaque(false);
-
-        JButton themeBtn = AppTheme.themeToggleButton();
-        rightPanel.add(themeBtn);
-
-        bar.add(rightPanel, BorderLayout.EAST);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+        right.setOpaque(false);
+        right.add(AppTheme.themeBtn());
+        bar.add(right, BorderLayout.EAST);
         return bar;
     }
 
-    private void updateTopBarTitle(String name) {
-        for (Component c : topBar.getComponents()) {
-            if (c instanceof JLabel lbl && "pageTitle".equals(lbl.getName())) {
-                lbl.setText(name);
-                lbl.setForeground(AppTheme.textPrimary());
+    private void setTopTitle(String s) {
+        for (Component c : topBar.getComponents())
+            if (c instanceof JLabel l && "_title".equals(l.getName())) {
+                l.setText(s); l.setForeground(AppTheme.fg());
             }
-        }
     }
 
-    private JPanel buildSidebar() {
-        JPanel sb = new JPanel();
-        sb.setBackground(AppTheme.sidebarBg());
-        sb.setPreferredSize(new Dimension(AppTheme.SIDEBAR_WIDTH, 0));
-        sb.setLayout(new BorderLayout());
+    /* ── Sidebar ─────────────────────────────────────────────────── */
 
-        // Logo
-        JPanel logoPanel = new JPanel() {
+    private JPanel sidebar() {
+        JPanel sb = new JPanel(new BorderLayout());
+        sb.setBackground(AppTheme.sidebarBg());
+        sb.setPreferredSize(new Dimension(AppTheme.SIDEBAR_W, 0));
+
+        // logo
+        JPanel logo = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
-                AppTheme.applyAntiAliasing(g);
+                AppTheme.aa(g);
                 g.setColor(AppTheme.sidebarBg());
                 g.fillRect(0, 0, getWidth(), getHeight());
-                g.setColor(AppTheme.border());
+                g.setColor(new Color(255, 255, 255, 12));
                 g.fillRect(0, getHeight() - 1, getWidth(), 1);
             }
         };
-        logoPanel.setPreferredSize(new Dimension(AppTheme.SIDEBAR_WIDTH, 52));
-        logoPanel.setLayout(new FlowLayout(FlowLayout.LEFT, 16, 12));
+        logo.setPreferredSize(new Dimension(AppTheme.SIDEBAR_W, 56));
+        logo.setLayout(new FlowLayout(FlowLayout.LEFT, 18, 12));
 
-        JLabel logoIcon = new JLabel() {
+        JLabel icon = new JLabel() {
             @Override protected void paintComponent(Graphics g) {
-                AppTheme.applyAntiAliasing(g);
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setColor(AppTheme.ACCENT);
-                g2.fillRoundRect(0, 0, 30, 30, 8, 8);
+                AppTheme.aa(g);
+                var g2 = (Graphics2D) g;
+                var gp = new GradientPaint(0, 0, AppTheme.ACCENT, 30, 30, AppTheme.VIOLET);
+                g2.setPaint(gp);
+                g2.fillRoundRect(0, 0, 32, 32, 8, 8);
                 g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                g2.drawString("LM", 4, 21);
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                g2.drawString("LMS", 3, 21);
             }
         };
-        logoIcon.setPreferredSize(new Dimension(30, 30));
+        icon.setPreferredSize(new Dimension(32, 32));
 
-        JLabel logoText = new JLabel("Library Manager");
-        logoText.setFont(AppTheme.FONT_BODY_BOLD);
-        logoText.setForeground(Color.WHITE);
+        JLabel brandText = new JLabel("Library Manager");
+        brandText.setFont(AppTheme.BODY_B);
+        brandText.setForeground(Color.WHITE);
 
-        logoPanel.add(logoIcon);
-        logoPanel.add(logoText);
-        sb.add(logoPanel, BorderLayout.NORTH);
+        logo.add(icon); logo.add(brandText);
+        sb.add(logo, BorderLayout.NORTH);
 
-        // Nav items
-        JPanel navPanel = new JPanel();
-        navPanel.setBackground(AppTheme.sidebarBg());
-        navPanel.setLayout(new BoxLayout(navPanel, BoxLayout.Y_AXIS));
-        navPanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        // items
+        JPanel items = new JPanel();
+        items.setBackground(AppTheme.sidebarBg());
+        items.setLayout(new BoxLayout(items, BoxLayout.Y_AXIS));
+        items.setBorder(BorderFactory.createEmptyBorder(12, 10, 10, 10));
 
-        navItems.clear();
-        addNavItem(navPanel, "Dashboard", "\u2302");
-        addNavItem(navPanel, "Books", "\uD83D\uDCD6");
-        addNavItem(navPanel, "Students", "\uD83D\uDC65");
-        addNavItem(navPanel, "Borrows", "\uD83D\uDD04");
-        addNavItem(navPanel, "Fines", "\uD83D\uDCB0");
-        addNavItem(navPanel, "Search", "\uD83D\uDD0D");
+        nav.clear();
+        addNav(items, "Dashboard",   "\u25A3");
+        addNav(items, "Books",       "\u25A1");
+        addNav(items, "Students",    "\u25CB");
+        addNav(items, "Circulation", "\u21C4");
+        addNav(items, "Fines",       "\u25C7");
+        addNav(items, "Search",      "\u2315");
+        sb.add(items, BorderLayout.CENTER);
 
-        sb.add(navPanel, BorderLayout.CENTER);
-
-        // Bottom: Logout
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setBackground(AppTheme.sidebarBg());
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(0, 8, 16, 8));
-        bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+        // bottom — logout
+        JPanel bottom = new JPanel();
+        bottom.setBackground(AppTheme.sidebarBg());
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 10, 18, 10));
+        bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
 
         JPanel sep = new JPanel();
-        sep.setBackground(AppTheme.border());
+        sep.setBackground(new Color(255, 255, 255, 12));
         sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        bottomPanel.add(sep);
-        bottomPanel.add(Box.createVerticalStrut(8));
+        bottom.add(sep); bottom.add(Box.createVerticalStrut(10));
 
-        NavItem logoutItem = new NavItem("Logout", "\u23FB", false);
-        logoutItem.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        logoutItem.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { doLogout(); }
+        NavItem logout = new NavItem("Sign Out", "\u2192", false);
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        logout.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { logout(); }
         });
-        bottomPanel.add(logoutItem);
-        sb.add(bottomPanel, BorderLayout.SOUTH);
-
+        bottom.add(logout);
+        sb.add(bottom, BorderLayout.SOUTH);
         return sb;
     }
 
-    private void addNavItem(JPanel parent, String name, String icon) {
+    private void addNav(JPanel p, String name, String icon) {
         NavItem item = new NavItem(name, icon, true);
         item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         item.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { navigateTo(name); }
+            @Override public void mouseClicked(MouseEvent e) { go(name); }
         });
-        navItems.put(name, item);
-        parent.add(item);
-        parent.add(Box.createVerticalStrut(2));
+        nav.put(name, item);
+        p.add(item); p.add(Box.createVerticalStrut(2));
     }
 
-    private void doLogout() {
-        if (currentSession != null) {
-            try { facade.auth().logout(currentSession.token()); } catch (Exception ignored) {}
-        }
-        currentSession = null;
+    private void logout() {
+        if (session != null) try { facade.auth().logout(session.token()); } catch (Exception ignored) {}
+        session = null;
         loginPanel.reset();
-        rootLayout.show(rootPanel, "LOGIN");
+        rootCards.show(root, "LOGIN");
     }
+
+    /* ── Theme ───────────────────────────────────────────────────── */
 
     private void applyTheme() {
-        applyThemeColors();
+        paintTheme();
         loginPanel.applyTheme();
-        // Rebuild sidebar
-        mainView.remove(sidebar);
-        sidebar = buildSidebar();
-        mainView.add(sidebar, BorderLayout.WEST);
-        // Rebuild top bar
-        Container centerArea = (Container) mainView.getComponent(1);
-        centerArea.remove(topBar);
-        topBar = buildTopBar();
-        centerArea.add(topBar, BorderLayout.NORTH);
-        updateTopBarTitle(activeNav);
-        // Refresh panels
-        if (currentSession != null) refreshAll();
+        main.remove(sidebar); sidebar = sidebar(); main.add(sidebar, BorderLayout.WEST);
+        var center = (Container) main.getComponent(1);
+        center.remove(topBar); topBar = topBar(); center.add(topBar, BorderLayout.NORTH);
+        setTopTitle(active);
+        if (session != null) refreshAll();
         SwingUtilities.invokeLater(() -> { revalidate(); repaint(); });
     }
 
-    private void applyThemeColors() {
-        rootPanel.setBackground(AppTheme.bgPrimary());
-        contentPanel.setBackground(AppTheme.bgPrimary());
+    private void paintTheme() {
+        root.setBackground(AppTheme.bg());
+        content.setBackground(AppTheme.bg());
     }
 
+    /* ── Sidebar nav item ────────────────────────────────────────── */
+
     class NavItem extends JPanel {
-        private final String name;
-        private final String icon;
+        private final String name, icon;
         private final boolean tracked;
-        private boolean hovered = false;
+        private boolean hover;
 
         NavItem(String name, String icon, boolean tracked) {
             this.name = name; this.icon = icon; this.tracked = tracked;
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(AppTheme.SIDEBAR_WIDTH - 16, 42));
+            setPreferredSize(new Dimension(AppTheme.SIDEBAR_W - 20, 42));
             addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) { hovered = true; repaint(); }
-                @Override public void mouseExited(MouseEvent e) { hovered = false; repaint(); }
+                @Override public void mouseEntered(MouseEvent e) { hover = true;  repaint(); }
+                @Override public void mouseExited(MouseEvent e)  { hover = false; repaint(); }
             });
         }
-        void updateState() { repaint(); }
+
+        void refresh() { repaint(); }
+
         @Override protected void paintComponent(Graphics g) {
-            AppTheme.applyAntiAliasing(g);
-            Graphics2D g2 = (Graphics2D) g;
-            boolean isActive = tracked && name.equals(activeNav);
-            if (isActive) {
+            AppTheme.aa(g);
+            var g2 = (Graphics2D) g;
+            boolean act = tracked && name.equals(active);
+            if (act) {
                 g2.setColor(AppTheme.sidebarActive());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
                 g2.setColor(AppTheme.ACCENT);
-                g2.fill(new RoundRectangle2D.Float(0, 4, 3, getHeight() - 8, 2, 2));
-            } else if (hovered) {
+                g2.fill(new RoundRectangle2D.Float(0, 6, 3, getHeight() - 12, 3, 3));
+            } else if (hover) {
                 g2.setColor(AppTheme.sidebarHover());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
             }
-            g2.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-            g2.setColor(isActive ? AppTheme.ACCENT : (hovered ? Color.WHITE : new Color(0x8B, 0x94, 0x9E)));
-            g2.drawString(icon, 14, 27);
-            g2.setFont(AppTheme.FONT_SIDEBAR);
-            g2.setColor(isActive ? Color.WHITE : (hovered ? Color.WHITE : new Color(0x8B, 0x94, 0x9E)));
+            Color col = act ? AppTheme.ACCENT : hover ? Color.WHITE : new Color(0x8B, 0x95, 0xA5);
+            g2.setFont(AppTheme.SIDEBAR); g2.setColor(col);
+            g2.drawString(icon, 16, 27);
+            g2.setColor(act ? Color.WHITE : col);
             g2.drawString(name, 42, 27);
         }
     }
 
+    /* ── Entry point ─────────────────────────────────────────────── */
+
     public static void launch() {
         try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception ignored) {}
-        UIManager.put("OptionPane.background", AppTheme.bgSecondary());
-        UIManager.put("Panel.background", AppTheme.bgSecondary());
-        UIManager.put("OptionPane.messageForeground", AppTheme.textPrimary());
         SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }

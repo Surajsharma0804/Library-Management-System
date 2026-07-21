@@ -11,163 +11,125 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Student management panel with search and registration.
+ * Student members management — registry, search, status tracking.
  */
 public final class StudentsPanel extends JPanel {
 
     private final LibraryFacade facade;
-    private final StudentController studentCtrl;
+    private final StudentController ctrl;
     private JTable table;
-    private DefaultTableModel tableModel;
+    private DefaultTableModel model;
     private JTextField searchField;
     private Session session;
 
-    private static final String[] COLUMNS = {"Reg No.", "Name", "Department", "Course", "Semester", "Membership", "Borrows", "Fine Balance"};
+    private static final String[] COLS = {"Reg No.", "Name", "Department", "Course", "Sem", "Status", "Borrows", "Fine"};
 
     public StudentsPanel(LibraryFacade facade) {
         this.facade = facade;
-        this.studentCtrl = new StudentController(facade);
-        setBackground(AppTheme.bgPrimary());
+        this.ctrl = new StudentController(facade);
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        buildUI();
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    private void buildUI() {
-        JPanel header = new JPanel(new BorderLayout(16, 0));
-        header.setOpaque(false);
+    private void build() {
+        JPanel hdr = new JPanel(new BorderLayout(16, 0));
+        hdr.setOpaque(false);
+        JPanel title = new JPanel();
+        title.setOpaque(false); title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
+        title.add(AppTheme.heading("Students"));
+        title.add(Box.createVerticalStrut(4));
+        title.add(AppTheme.label2("Manage student members and memberships"));
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-        titlePanel.add(AppTheme.heading("Students"));
-        titlePanel.add(Box.createVerticalStrut(4));
-        titlePanel.add(AppTheme.secondaryLabel("Manage student members and memberships"));
-
-        searchField = AppTheme.styledTextField(20);
-        searchField.setPreferredSize(new Dimension(300, 40));
-        searchField.addActionListener(e -> filterStudents());
+        searchField = AppTheme.textField(22);
+        searchField.setPreferredSize(new Dimension(280, 40));
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterStudents(); }
+            public void insertUpdate(javax.swing.event.DocumentEvent e)  { filter(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e)  { filter(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filter(); }
         });
 
-        JButton addBtn = AppTheme.primaryButton("+ Add Student");
+        JButton addBtn = AppTheme.primaryBtn("+ Add Student");
         addBtn.setPreferredSize(new Dimension(140, 40));
-        addBtn.addActionListener(e -> showAddDialog());
+        addBtn.addActionListener(e -> addStudent());
 
-        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actionsPanel.setOpaque(false);
-        actionsPanel.add(searchField);
-        actionsPanel.add(addBtn);
+        JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        acts.setOpaque(false);
+        acts.add(searchField); acts.add(addBtn);
+        hdr.add(title, BorderLayout.WEST); hdr.add(acts, BorderLayout.EAST);
 
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(actionsPanel, BorderLayout.EAST);
-
-        tableModel = new DefaultTableModel(COLUMNS, 0);
-        table = new JTable(tableModel) {
+        model = new DefaultTableModel(COLS, 0);
+        table = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
-                Component c = super.prepareRenderer(renderer, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
-                } else {
-                    c.setBackground(AppTheme.ACCENT_DARK);
+            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
+                Component comp = super.prepareRenderer(rn, r, c);
+                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
+                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+                comp.setForeground(AppTheme.fg());
+                if (c == 5) { String v = String.valueOf(getValueAt(r, c));
+                    if ("ACTIVE".equals(v)) comp.setForeground(AppTheme.GREEN);
+                    else comp.setForeground(AppTheme.RED);
                 }
-                c.setForeground(AppTheme.textPrimary());
-                if (col == 5) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    if ("ACTIVE".equals(val)) c.setForeground(AppTheme.SUCCESS);
-                    else if ("EXPIRED".equals(val) || "INACTIVE".equals(val)) c.setForeground(AppTheme.DANGER);
-                    else c.setForeground(AppTheme.WARNING);
-                }
-                return c;
+                return comp;
             }
         };
         AppTheme.styleTable(table);
 
-        JScrollPane sp = AppTheme.styledScrollPane(table);
-        JPanel tableContainer = new JPanel(new BorderLayout());
-        tableContainer.setOpaque(false);
-        tableContainer.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-        tableContainer.add(sp, BorderLayout.CENTER);
+        JPanel tbl = new JPanel(new BorderLayout());
+        tbl.setOpaque(false); tbl.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
 
-        add(header, BorderLayout.NORTH);
-        add(tableContainer, BorderLayout.CENTER);
+        add(hdr, BorderLayout.NORTH); add(tbl, BorderLayout.CENTER);
     }
 
-    public void refresh(Session session) {
-        this.session = session;
-        loadStudents(facade.userRepo().findAllStudents());
+    public void refresh(Session s) {
+        this.session = s; setBackground(AppTheme.bg());
+        load(facade.userRepo().findAllStudents());
     }
 
-    private void loadStudents(List<Student> students) {
-        tableModel.setRowCount(0);
-        for (Student s : students) {
-            tableModel.addRow(new Object[]{
-                    s.getRegistrationNumber(),
-                    s.getFirstName() + " " + s.getLastName(),
-                    s.getDepartment() != null ? s.getDepartment() : "-",
-                    s.getCourse() != null ? s.getCourse() : "-",
-                    s.getSemester(),
-                    s.getMembershipStatus().name(),
-                    s.getCurrentBorrowCount(),
-                    String.format("\u20B9%.2f", s.getFineBalancePaise() / 100.0)
-            });
-        }
+    private void load(List<Student> list) {
+        model.setRowCount(0);
+        for (Student s : list) model.addRow(new Object[]{
+                s.getRegistrationNumber(),
+                s.getFirstName() + " " + s.getLastName(),
+                s.getDepartment() != null ? s.getDepartment() : "-",
+                s.getCourse() != null ? s.getCourse() : "-",
+                s.getSemester(), s.getMembershipStatus().name(),
+                s.getCurrentBorrowCount(),
+                String.format("\u20B9%.2f", s.getFineBalancePaise() / 100.0)});
     }
 
-    private void filterStudents() {
-        String query = searchField.getText().trim().toLowerCase();
-        List<Student> students = facade.userRepo().findAllStudents();
-        if (query.isEmpty()) {
-            loadStudents(students);
-            return;
-        }
-        List<Student> filtered = students.stream().filter(s -> {
-            String fullName = (s.getFirstName() + " " + s.getLastName()).toLowerCase();
-            return fullName.contains(query)
-                    || s.getRegistrationNumber().toLowerCase().contains(query)
-                    || (s.getDepartment() != null && s.getDepartment().toLowerCase().contains(query));
-        }).toList();
-        loadStudents(filtered);
+    private void filter() {
+        String q = searchField.getText().trim().toLowerCase();
+        List<Student> all = facade.userRepo().findAllStudents();
+        if (q.isEmpty()) { load(all); return; }
+        load(all.stream().filter(s -> (s.getFirstName() + " " + s.getLastName()).toLowerCase().contains(q)
+                || s.getRegistrationNumber().toLowerCase().contains(q)
+                || (s.getDepartment() != null && s.getDepartment().toLowerCase().contains(q))).toList());
     }
 
-    private void showAddDialog() {
+    private void addStudent() {
         if (session == null) return;
-        JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
-        JTextField fnF = new JTextField(); JTextField lnF = new JTextField();
-        JTextField emailF = new JTextField(); JTextField phoneF = new JTextField();
-        JTextField deptF = new JTextField(); JTextField courseF = new JTextField();
-        JTextField semF = new JTextField("1"); JTextField sectionF = new JTextField();
-        form.add(lbl("First Name:")); form.add(fnF);
-        form.add(lbl("Last Name:")); form.add(lnF);
-        form.add(lbl("Email:")); form.add(emailF);
-        form.add(lbl("Phone:")); form.add(phoneF);
-        form.add(lbl("Department:")); form.add(deptF);
-        form.add(lbl("Course:")); form.add(courseF);
-        form.add(lbl("Semester:")); form.add(semF);
-        form.add(lbl("Section:")); form.add(sectionF);
-
-        int result = JOptionPane.showConfirmDialog(this, form, "Register New Student",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
+        JPanel f = new JPanel(new GridLayout(0, 2, 10, 10));
+        JTextField fn = t(), ln = t(), em = t(), ph = t(), dp = t(), co = t(), sm = t("1"), sc = t();
+        f.add(lbl("First Name:")); f.add(fn);  f.add(lbl("Last Name:"));  f.add(ln);
+        f.add(lbl("Email:"));      f.add(em);  f.add(lbl("Phone:"));      f.add(ph);
+        f.add(lbl("Department:")); f.add(dp);  f.add(lbl("Course:"));     f.add(co);
+        f.add(lbl("Semester:"));   f.add(sm);  f.add(lbl("Section:"));    f.add(sc);
+        if (JOptionPane.showConfirmDialog(this, f, "Register New Student",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
             try {
-                Student s = studentCtrl.register(session,
-                        fnF.getText().trim(), lnF.getText().trim(),
-                        emailF.getText().trim(), phoneF.getText().trim(),
-                        deptF.getText().trim(), courseF.getText().trim(),
-                        Integer.parseInt(semF.getText().trim()),
-                        sectionF.getText().trim());
+                Student s = ctrl.register(session, fn.getText().trim(), ln.getText().trim(),
+                        em.getText().trim(), ph.getText().trim(), dp.getText().trim(),
+                        co.getText().trim(), Integer.parseInt(sm.getText().trim()), sc.getText().trim());
                 refresh(session);
-                AppTheme.showSuccess(this, "Student registered!\nReg No: " + s.getRegistrationNumber()
-                        + "\nCard: " + s.getLibraryCardNumber());
-            } catch (Exception ex) {
-                AppTheme.showError(this, ex.getMessage());
-            }
+                AppTheme.success(this, "Student registered!\nReg: " + s.getRegistrationNumber());
+            } catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
         }
     }
 
-    private JLabel lbl(String t) { JLabel l = new JLabel(t); l.setFont(AppTheme.FONT_BODY); return l; }
+    private JTextField t()        { return new JTextField(); }
+    private JTextField t(String v){ var tf = new JTextField(v); return tf; }
+    private JLabel lbl(String s)  { var l = new JLabel(s); l.setFont(AppTheme.BODY); return l; }
 }

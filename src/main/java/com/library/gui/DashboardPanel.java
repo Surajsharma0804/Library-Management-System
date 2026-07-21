@@ -1,144 +1,116 @@
 package com.library.gui;
 
-import com.library.dto.DashboardDTO;
 import com.library.facade.LibraryFacade;
 import com.library.security.Session;
+import com.library.service.DashboardService;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * Dashboard panel with role-specific metric cards and welcome message.
+ * Dashboard — key performance metrics at a glance.
  */
 public final class DashboardPanel extends JPanel {
 
     private final LibraryFacade facade;
-    private JPanel cardsPanel;
-    private JLabel welcomeLabel;
-    private JLabel roleLabel;
-    private JLabel timestampLabel;
+    private JPanel metricsRow, recentRow;
 
     public DashboardPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.bgPrimary());
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    public void refresh(Session session) {
+    private void build() {
         removeAll();
-
-        // Header
         JPanel header = new JPanel();
         header.setOpaque(false);
         header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-
-        welcomeLabel = new JLabel("Welcome back, " + session.username());
-        welcomeLabel.setFont(AppTheme.FONT_TITLE);
-        welcomeLabel.setForeground(AppTheme.textPrimary());
-        welcomeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        roleLabel = new JLabel(session.role().name() + " Dashboard");
-        roleLabel.setFont(AppTheme.FONT_BODY);
-        roleLabel.setForeground(AppTheme.textSecondary());
-        roleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String time = java.time.LocalDateTime.now()
-                .format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy  |  hh:mm a"));
-        timestampLabel = new JLabel(time);
-        timestampLabel.setFont(AppTheme.FONT_SMALL);
-        timestampLabel.setForeground(AppTheme.textMuted());
-        timestampLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        header.add(welcomeLabel);
-        header.add(Box.createVerticalStrut(4));
-        header.add(roleLabel);
-        header.add(Box.createVerticalStrut(4));
-        header.add(timestampLabel);
-        header.add(Box.createVerticalStrut(30));
-
+        JLabel t = new JLabel("Dashboard");
+        t.setFont(AppTheme.H1); t.setForeground(AppTheme.fg());
+        JLabel s = new JLabel("Overview of library operations and key metrics");
+        s.setFont(AppTheme.SMALL); s.setForeground(AppTheme.fgSecondary());
+        header.add(t); header.add(Box.createVerticalStrut(4)); header.add(s);
         add(header, BorderLayout.NORTH);
 
-        // Cards
-        DashboardDTO dto = facade.dashboard().getDashboardSummary(session);
+        metricsRow = new JPanel(new GridLayout(1, 4, 16, 0));
+        metricsRow.setOpaque(false);
+        metricsRow.setBorder(BorderFactory.createEmptyBorder(24, 0, 0, 0));
 
-        cardsPanel = new JPanel(new GridLayout(0, 4, 16, 16));
-        cardsPanel.setOpaque(false);
+        recentRow = new JPanel(new GridLayout(1, 3, 16, 0));
+        recentRow.setOpaque(false);
+        recentRow.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
 
-        cardsPanel.add(AppTheme.metricCard("TOTAL BOOKS", String.valueOf(dto.getTotalBooks()), AppTheme.ACCENT));
-        cardsPanel.add(AppTheme.metricCard("AVAILABLE", String.valueOf(dto.getAvailableBooks()), AppTheme.SUCCESS));
-        cardsPanel.add(AppTheme.metricCard("BORROWED", String.valueOf(dto.getBorrowedBooks()), AppTheme.WARNING));
-        cardsPanel.add(AppTheme.metricCard("OVERDUE", String.valueOf(dto.getOverdueBooks()), AppTheme.DANGER));
+        JPanel body = new JPanel(new BorderLayout());
+        body.setOpaque(false);
+        body.add(metricsRow, BorderLayout.NORTH);
+        body.add(recentRow, BorderLayout.CENTER);
+        add(body, BorderLayout.CENTER);
+    }
 
-        switch (session.role()) {
-            case ADMIN -> {
-                cardsPanel.add(AppTheme.metricCard("TOTAL STUDENTS", String.valueOf(dto.getTotalStudents()), AppTheme.PURPLE));
-                cardsPanel.add(AppTheme.metricCard("ACTIVE STUDENTS", String.valueOf(dto.getActiveStudents()), AppTheme.SUCCESS));
-                cardsPanel.add(AppTheme.metricCard("PENDING FINES", String.valueOf(dto.getPendingFines()), AppTheme.ORANGE));
-                String fineAmt = String.format("\u20B9%.2f", dto.getTotalFineAmountPaise() / 100.0);
-                cardsPanel.add(AppTheme.metricCard("FINE AMOUNT", fineAmt, AppTheme.DANGER));
-            }
-            case LIBRARIAN -> {
-                cardsPanel.add(AppTheme.metricCard("RESERVATIONS", String.valueOf(dto.getPendingReservations()), AppTheme.PURPLE));
-            }
-            case STUDENT -> {
-                cardsPanel.add(AppTheme.metricCard("MY BORROWS", String.valueOf(dto.getBooksBorrowedByCurrentUser()), AppTheme.PURPLE));
-                cardsPanel.add(AppTheme.metricCard("BORROW LIMIT", String.valueOf(dto.getRemainingBorrowLimit()), AppTheme.ORANGE));
-                String myFine = String.format("\u20B9%.2f", dto.getCurrentUserFinePaise() / 100.0);
-                cardsPanel.add(AppTheme.metricCard("MY FINES", myFine, AppTheme.DANGER));
-            }
+    public void refresh(Session session) {
+        setBackground(AppTheme.bg());
+        metricsRow.removeAll(); recentRow.removeAll();
+        try {
+            var stats = facade.dashboard().getDashboardSummary(session);
+            metricsRow.add(AppTheme.metricCard("Total Books",      String.valueOf(stats.getTotalBooks()),      AppTheme.ACCENT));
+            metricsRow.add(AppTheme.metricCard("Available",         String.valueOf(stats.getAvailableBooks()),  AppTheme.GREEN));
+            metricsRow.add(AppTheme.metricCard("Active Borrows",    String.valueOf(stats.getBorrowedBooks()),   AppTheme.AMBER));
+            metricsRow.add(AppTheme.metricCard("Overdue",           String.valueOf(stats.getOverdueBooks()),    AppTheme.RED));
+
+            recentRow.add(infoCard("Registered Students",  String.valueOf(stats.getTotalStudents()),   AppTheme.VIOLET));
+            recentRow.add(infoCard("Pending Fines",        String.format("\u20B9%.0f", stats.getTotalFineAmountPaise() / 100.0), AppTheme.ROSE));
+            recentRow.add(infoCard("Reservations",         String.valueOf(stats.getPendingReservations()), AppTheme.TEAL));
+        } catch (Exception ex) {
+            metricsRow.add(AppTheme.metricCard("Total Books",   "0", AppTheme.ACCENT));
+            metricsRow.add(AppTheme.metricCard("Available",     "0", AppTheme.GREEN));
+            metricsRow.add(AppTheme.metricCard("Active Borrows","0", AppTheme.AMBER));
+            metricsRow.add(AppTheme.metricCard("Overdue",       "0", AppTheme.RED));
         }
+        revalidate(); repaint();
+    }
 
-        // Wrap cards in a top-aligned container
-        JPanel cardsContainer = new JPanel(new BorderLayout());
-        cardsContainer.setOpaque(false);
-        cardsContainer.add(cardsPanel, BorderLayout.NORTH);
-
-        // Quick actions card
-        JPanel actionsCard = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                AppTheme.applyAntiAliasing(g);
-                Graphics2D g2 = (Graphics2D) g;
+    private JPanel infoCard(String title, String value, Color accent) {
+        JPanel card = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                AppTheme.aa(g); var g2 = (Graphics2D) g;
+                g2.setColor(new Color(0, 0, 0, AppTheme.isDark() ? 25 : 8));
+                g2.fill(new RoundRectangle2D.Float(2, 2, getWidth()-2, getHeight()-2, 14, 14));
                 g2.setColor(AppTheme.bgCard());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.CARD_ARC, AppTheme.CARD_ARC));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth()-2, getHeight()-2, 14, 14));
+                if (!AppTheme.isDark()) {
+                    g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
+                    g2.draw(new RoundRectangle2D.Float(.5f, .5f, getWidth()-3, getHeight()-3, 14, 14));
+                }
             }
         };
-        actionsCard.setOpaque(false);
-        actionsCard.setLayout(new BoxLayout(actionsCard, BoxLayout.Y_AXIS));
-        actionsCard.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        card.setOpaque(false);
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
 
-        JLabel actionsTitle = new JLabel("System Information");
-        actionsTitle.setFont(AppTheme.FONT_SUBHEADING);
-        actionsTitle.setForeground(AppTheme.textPrimary());
-        actionsTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        // accent dot + title
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        row.setOpaque(false);
+        JLabel dot = new JLabel() {
+            @Override protected void paintComponent(Graphics g) {
+                AppTheme.aa(g);
+                g.setColor(accent); ((Graphics2D)g).fillOval(0, 2, 10, 10);
+            }
+        };
+        dot.setPreferredSize(new Dimension(10, 14));
+        JLabel tl = new JLabel(title.toUpperCase());
+        tl.setFont(AppTheme.SMALL_B); tl.setForeground(AppTheme.fgMuted());
+        row.add(dot); row.add(tl);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel ver = new JLabel("Version 1.0.0  |  Java " + System.getProperty("java.version"));
-        ver.setFont(AppTheme.FONT_SMALL);
-        ver.setForeground(AppTheme.textMuted());
-        ver.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel vl = new JLabel(value);
+        vl.setFont(AppTheme.METRIC); vl.setForeground(AppTheme.fg());
+        vl.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel sessionInfo = new JLabel("Session: " + session.token().substring(0, 8) + "...  |  Role: " + session.role());
-        sessionInfo.setFont(AppTheme.FONT_SMALL);
-        sessionInfo.setForeground(AppTheme.textMuted());
-        sessionInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        actionsCard.add(actionsTitle);
-        actionsCard.add(Box.createVerticalStrut(12));
-        actionsCard.add(ver);
-        actionsCard.add(Box.createVerticalStrut(4));
-        actionsCard.add(sessionInfo);
-
-        JPanel bottomPadded = new JPanel(new BorderLayout());
-        bottomPadded.setOpaque(false);
-        bottomPadded.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
-        bottomPadded.add(actionsCard, BorderLayout.NORTH);
-
-        cardsContainer.add(bottomPadded, BorderLayout.CENTER);
-
-        add(cardsContainer, BorderLayout.CENTER);
-        revalidate();
-        repaint();
+        card.add(row); card.add(Box.createVerticalStrut(12)); card.add(vl);
+        return card;
     }
 }

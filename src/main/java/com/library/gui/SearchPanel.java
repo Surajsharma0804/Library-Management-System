@@ -7,178 +7,150 @@ import com.library.security.Session;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 
 /**
- * Advanced search panel with multiple filter criteria.
+ * Advanced search panel with multi-criteria filtering.
  */
 public final class SearchPanel extends JPanel {
 
     private final LibraryFacade facade;
-    private JTable table;
-    private DefaultTableModel tableModel;
     private JTextField titleField, authorField, isbnField, categoryField;
+    private JTable table;
+    private DefaultTableModel model;
     private Session session;
 
-    private static final String[] COLUMNS = {"ID", "Title", "Author", "ISBN", "Category", "Available", "Total", "Status"};
+    private static final String[] COLS = {"ID", "Title", "Author", "ISBN", "Category", "Publisher", "Available", "Status"};
 
     public SearchPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.bgPrimary());
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        buildUI();
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    private void buildUI() {
-        // Title
-        JPanel header = new JPanel();
-        header.setOpaque(false);
-        header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-        header.add(AppTheme.heading("Search"));
-        header.add(Box.createVerticalStrut(4));
-        header.add(AppTheme.secondaryLabel("Find books by title, author, ISBN, or category"));
-        header.add(Box.createVerticalStrut(20));
+    private void build() {
+        JPanel hdr = new JPanel();
+        hdr.setOpaque(false); hdr.setLayout(new BoxLayout(hdr, BoxLayout.Y_AXIS));
+        hdr.add(AppTheme.heading("Advanced Search"));
+        hdr.add(Box.createVerticalStrut(4));
+        hdr.add(AppTheme.label2("Search books by multiple criteria"));
 
-        // Search form card
-        JPanel filterCard = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
-                AppTheme.applyAntiAliasing(g);
-                Graphics2D g2 = (Graphics2D) g;
+        // filter form
+        JPanel form = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                AppTheme.aa(g); var g2 = (Graphics2D) g;
                 g2.setColor(AppTheme.bgCard());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.CARD_ARC, AppTheme.CARD_ARC));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                if (!AppTheme.isDark()) {
+                    g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
+                    g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 12, 12);
+                }
             }
         };
-        filterCard.setOpaque(false);
-        filterCard.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        filterCard.setLayout(new BoxLayout(filterCard, BoxLayout.Y_AXIS));
+        form.setOpaque(false);
+        form.setLayout(new GridBagLayout());
+        form.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+        form.setMaximumSize(new Dimension(Integer.MAX_VALUE, 80));
 
-        JPanel fieldsRow = new JPanel(new GridLayout(1, 4, 12, 0));
-        fieldsRow.setOpaque(false);
-        fieldsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 65));
-        fieldsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        var gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(0, 6, 0, 6);
+        gbc.weightx = 1;
 
-        titleField = createFilterField("Title");
-        authorField = createFilterField("Author");
-        isbnField = createFilterField("ISBN");
-        categoryField = createFilterField("Category");
+        titleField    = AppTheme.textField(15); titleField.setPreferredSize(new Dimension(0, 38));
+        authorField   = AppTheme.textField(15); authorField.setPreferredSize(new Dimension(0, 38));
+        isbnField     = AppTheme.textField(12); isbnField.setPreferredSize(new Dimension(0, 38));
+        categoryField = AppTheme.textField(12); categoryField.setPreferredSize(new Dimension(0, 38));
 
-        fieldsRow.add(fieldGroup("Title", titleField));
-        fieldsRow.add(fieldGroup("Author", authorField));
-        fieldsRow.add(fieldGroup("ISBN", isbnField));
-        fieldsRow.add(fieldGroup("Category", categoryField));
+        gbc.gridx = 0; form.add(col("Title", titleField), gbc);
+        gbc.gridx = 1; form.add(col("Author", authorField), gbc);
+        gbc.gridx = 2; form.add(col("ISBN", isbnField), gbc);
+        gbc.gridx = 3; form.add(col("Category", categoryField), gbc);
+        gbc.gridx = 4; gbc.weightx = 0;
+        JButton go = AppTheme.primaryBtn("Search");
+        go.setPreferredSize(new Dimension(100, 38));
+        go.addActionListener(e -> search());
+        JPanel btnWrap = new JPanel(new BorderLayout());
+        btnWrap.setOpaque(false);
+        btnWrap.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+        btnWrap.add(go, BorderLayout.CENTER);
+        form.add(btnWrap, gbc);
 
-        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        btnRow.setOpaque(false);
-        btnRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        btnRow.setBorder(BorderFactory.createEmptyBorder(12, 0, 0, 0));
+        titleField.addActionListener(e -> search());
+        authorField.addActionListener(e -> search());
+        isbnField.addActionListener(e -> search());
+        categoryField.addActionListener(e -> search());
 
-        JButton searchBtn = AppTheme.primaryButton("Search");
-        searchBtn.setPreferredSize(new Dimension(120, 38));
-        searchBtn.addActionListener(e -> doSearch());
-
-        JButton clearBtn = AppTheme.secondaryButton("Clear");
-        clearBtn.setPreferredSize(new Dimension(100, 38));
-        clearBtn.addActionListener(e -> {
-            titleField.setText(""); authorField.setText(""); isbnField.setText(""); categoryField.setText("");
-            tableModel.setRowCount(0);
-        });
-
-        btnRow.add(searchBtn);
-        btnRow.add(clearBtn);
-
-        filterCard.add(fieldsRow);
-        filterCard.add(btnRow);
-
-        // Top section
-        JPanel topSection = new JPanel();
-        topSection.setOpaque(false);
-        topSection.setLayout(new BoxLayout(topSection, BoxLayout.Y_AXIS));
-        topSection.add(header);
-        topSection.add(filterCard);
-
-        // Table
-        tableModel = new DefaultTableModel(COLUMNS, 0);
-        table = new JTable(tableModel) {
+        // table
+        model = new DefaultTableModel(COLS, 0);
+        table = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
-                Component c = super.prepareRenderer(renderer, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
-                } else { c.setBackground(AppTheme.ACCENT_DARK); }
-                c.setForeground(AppTheme.textPrimary());
-                if (col == 7) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    if ("AVAILABLE".equals(val)) c.setForeground(AppTheme.SUCCESS);
-                    else c.setForeground(AppTheme.WARNING);
+            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
+                Component comp = super.prepareRenderer(rn, r, c);
+                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
+                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+                comp.setForeground(AppTheme.fg());
+                if (c == 7) { String v = String.valueOf(getValueAt(r, c));
+                    if ("AVAILABLE".equals(v)) comp.setForeground(AppTheme.GREEN);
+                    else comp.setForeground(AppTheme.RED);
                 }
-                return c;
+                return comp;
             }
         };
         AppTheme.styleTable(table);
 
-        JScrollPane sp = AppTheme.styledScrollPane(table);
-        JPanel tableContainer = new JPanel(new BorderLayout());
-        tableContainer.setOpaque(false);
-        tableContainer.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-        tableContainer.add(sp, BorderLayout.CENTER);
+        JPanel body = new JPanel(new BorderLayout());
+        body.setOpaque(false);
+        body.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
 
-        add(topSection, BorderLayout.NORTH);
-        add(tableContainer, BorderLayout.CENTER);
+        JPanel formWrap = new JPanel(new BorderLayout());
+        formWrap.setOpaque(false);
+        formWrap.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        formWrap.add(form, BorderLayout.NORTH);
+
+        JPanel tbl = new JPanel(new BorderLayout());
+        tbl.setOpaque(false); tbl.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
+        tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
+
+        body.add(formWrap, BorderLayout.NORTH);
+        body.add(tbl, BorderLayout.CENTER);
+
+        add(hdr, BorderLayout.NORTH); add(body, BorderLayout.CENTER);
     }
 
-    private void doSearch() {
+    private JPanel col(String label, JTextField field) {
+        JPanel p = new JPanel(new BorderLayout(0, 4));
+        p.setOpaque(false);
+        JLabel l = new JLabel(label);
+        l.setFont(AppTheme.SMALL_B); l.setForeground(AppTheme.fgSecondary());
+        p.add(l, BorderLayout.NORTH); p.add(field, BorderLayout.CENTER);
+        return p;
+    }
+
+    public void refresh(Session s) { this.session = s; setBackground(AppTheme.bg()); }
+
+    private void search() {
+        model.setRowCount(0);
         String t = titleField.getText().trim().toLowerCase();
         String a = authorField.getText().trim().toLowerCase();
         String i = isbnField.getText().trim().toLowerCase();
         String c = categoryField.getText().trim().toLowerCase();
+        List<Book> results = facade.bookRepo().findAll().stream().filter(b -> {
+            boolean ok = true;
+            if (!t.isEmpty()) ok = b.getTitle().toLowerCase().contains(t);
+            if (!a.isEmpty()) ok = ok && b.getAuthor().toLowerCase().contains(a);
+            if (!i.isEmpty()) ok = ok && b.getIsbn() != null && b.getIsbn().toLowerCase().contains(i);
+            if (!c.isEmpty()) ok = ok && b.getCategory() != null && b.getCategory().toLowerCase().contains(c);
+            return ok;
+        }).toList();
 
-        tableModel.setRowCount(0);
-        List<Book> books = facade.bookRepo().findAll();
-        for (Book b : books) {
-            boolean match = true;
-            if (!t.isEmpty() && !b.getTitle().toLowerCase().contains(t)) match = false;
-            if (!a.isEmpty() && !b.getAuthor().toLowerCase().contains(a)) match = false;
-            if (!i.isEmpty() && !b.getIsbn().toLowerCase().contains(i)) match = false;
-            if (!c.isEmpty() && (b.getCategory() == null || !b.getCategory().toLowerCase().contains(c))) match = false;
+        for (Book b : results) model.addRow(new Object[]{
+                b.getId(), b.getTitle(), b.getAuthor(), b.getIsbn(),
+                b.getCategory() != null ? b.getCategory() : "-",
+                b.getPublisher() != null ? b.getPublisher() : "-",
+                b.getAvailableQuantity(), b.getStatus().name()});
 
-            if (match) {
-                tableModel.addRow(new Object[]{
-                        b.getId(), b.getTitle(), b.getAuthor(), b.getIsbn(),
-                        b.getCategory() != null ? b.getCategory() : "-",
-                        b.getAvailableQuantity(), b.getTotalQuantity(),
-                        b.getStatus().name()
-                });
-            }
-        }
-    }
-
-    public void refresh(Session session) {
-        this.session = session;
-    }
-
-    private JTextField createFilterField(String placeholder) {
-        JTextField f = AppTheme.styledTextField(15);
-        f.setPreferredSize(new Dimension(180, 36));
-        f.addActionListener(e -> doSearch());
-        return f;
-    }
-
-    private JPanel fieldGroup(String label, JTextField field) {
-        JPanel p = new JPanel();
-        p.setOpaque(false);
-        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        JLabel lbl = new JLabel(label);
-        lbl.setFont(AppTheme.FONT_SMALL);
-        lbl.setForeground(AppTheme.textSecondary());
-        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        field.setAlignmentX(Component.LEFT_ALIGNMENT);
-        field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
-        p.add(lbl);
-        p.add(Box.createVerticalStrut(4));
-        p.add(field);
-        return p;
+        if (results.isEmpty()) AppTheme.error(this, "No books found matching the criteria.");
     }
 }

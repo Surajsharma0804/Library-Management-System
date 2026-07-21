@@ -11,126 +11,98 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Fines management panel with payment actions.
+ * Fines management — view and collect overdue fines.
  */
 public final class FinesPanel extends JPanel {
 
     private final LibraryFacade facade;
     private JTable table;
-    private DefaultTableModel tableModel;
+    private DefaultTableModel model;
     private Session session;
 
-    private static final String[] COLUMNS = {"Fine ID", "Student Reg", "Book ID", "Amount", "Reason", "Status", "Date"};
+    private static final String[] COLS = {"Fine ID", "Student Reg", "Book ID", "Amount", "Reason", "Status", "Date"};
 
     public FinesPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.bgPrimary());
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        buildUI();
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    private void buildUI() {
-        JPanel header = new JPanel(new BorderLayout(16, 0));
-        header.setOpaque(false);
+    private void build() {
+        JPanel hdr = new JPanel(new BorderLayout(16, 0));
+        hdr.setOpaque(false);
+        JPanel title = new JPanel();
+        title.setOpaque(false); title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
+        title.add(AppTheme.heading("Fines"));
+        title.add(Box.createVerticalStrut(4));
+        title.add(AppTheme.label2("Track and collect overdue fines"));
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-        titlePanel.add(AppTheme.heading("Fines"));
-        titlePanel.add(Box.createVerticalStrut(4));
-        titlePanel.add(AppTheme.secondaryLabel("Track and manage overdue fines"));
-
-        JButton payBtn = AppTheme.primaryButton("Collect Fine");
+        JButton payBtn = AppTheme.primaryBtn("Collect Fine");
         payBtn.setPreferredSize(new Dimension(130, 40));
-        payBtn.addActionListener(e -> paySelectedFine());
+        payBtn.addActionListener(e -> collectFine());
 
-        JButton refreshBtn = AppTheme.secondaryButton("Refresh");
-        refreshBtn.setPreferredSize(new Dimension(100, 40));
-        refreshBtn.addActionListener(e -> refresh(session));
+        JButton refBtn = AppTheme.secondaryBtn("Refresh");
+        refBtn.setPreferredSize(new Dimension(100, 40));
+        refBtn.addActionListener(e -> refresh(session));
 
-        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actionsPanel.setOpaque(false);
-        actionsPanel.add(payBtn);
-        actionsPanel.add(refreshBtn);
+        JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acts.setOpaque(false);
+        acts.add(payBtn); acts.add(refBtn);
+        hdr.add(title, BorderLayout.WEST); hdr.add(acts, BorderLayout.EAST);
 
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(actionsPanel, BorderLayout.EAST);
-
-        tableModel = new DefaultTableModel(COLUMNS, 0);
-        table = new JTable(tableModel) {
+        model = new DefaultTableModel(COLS, 0);
+        table = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
-                Component c = super.prepareRenderer(renderer, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
-                } else { c.setBackground(AppTheme.ACCENT_DARK); }
-                c.setForeground(AppTheme.textPrimary());
-                if (col == 5) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    if ("PAID".equals(val)) c.setForeground(AppTheme.SUCCESS);
-                    else c.setForeground(AppTheme.DANGER);
+            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
+                Component comp = super.prepareRenderer(rn, r, c);
+                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
+                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+                comp.setForeground(AppTheme.fg());
+                if (c == 5) { String v = String.valueOf(getValueAt(r, c));
+                    if ("PAID".equals(v)) comp.setForeground(AppTheme.GREEN);
+                    else comp.setForeground(AppTheme.RED);
                 }
-                if (col == 3) c.setForeground(AppTheme.WARNING);
-                return c;
+                if (c == 3) comp.setForeground(AppTheme.AMBER);
+                return comp;
             }
         };
         AppTheme.styleTable(table);
 
-        JScrollPane sp = AppTheme.styledScrollPane(table);
-        JPanel tableContainer = new JPanel(new BorderLayout());
-        tableContainer.setOpaque(false);
-        tableContainer.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-        tableContainer.add(sp, BorderLayout.CENTER);
+        JPanel tbl = new JPanel(new BorderLayout());
+        tbl.setOpaque(false); tbl.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
 
-        add(header, BorderLayout.NORTH);
-        add(tableContainer, BorderLayout.CENTER);
+        add(hdr, BorderLayout.NORTH); add(tbl, BorderLayout.CENTER);
     }
 
-    public void refresh(Session session) {
-        this.session = session;
-        tableModel.setRowCount(0);
+    public void refresh(Session s) {
+        this.session = s; setBackground(AppTheme.bg());
+        model.setRowCount(0);
         List<Fine> fines = facade.fineRepo().findAll();
         fines.stream()
-                .sorted((a, b) -> {
-                    boolean aPaid = a.getStatus() == FineStatus.PAID;
-                    boolean bPaid = b.getStatus() == FineStatus.PAID;
-                    if (aPaid != bPaid) return aPaid ? 1 : -1;
-                    return 0;
-                })
-                .forEach(f -> tableModel.addRow(new Object[]{
+                .sorted((a, b) -> { boolean ap = a.getStatus()==FineStatus.PAID, bp = b.getStatus()==FineStatus.PAID;
+                    return ap != bp ? (ap ? 1 : -1) : 0; })
+                .forEach(f -> model.addRow(new Object[]{
                         f.getId(), f.getRegistrationNumber(), f.getBookId(),
-                        String.format("\u20B9%.2f", f.getAmountPaise() / 100.0),
-                        f.getReason(),
-                        f.getStatus() == FineStatus.PAID ? "PAID" : "UNPAID",
-                        f.getCreatedAt() != null ? f.getCreatedAt().toLocalDate().toString() : "-"
-                }));
+                        String.format("\u20B9%.2f", f.getAmountPaise()/100.0), f.getReason(),
+                        f.getStatus()==FineStatus.PAID ? "PAID" : "UNPAID",
+                        f.getCreatedAt()!=null ? f.getCreatedAt().toLocalDate().toString() : "-"}));
     }
 
-    private void paySelectedFine() {
+    private void collectFine() {
         if (session == null) return;
         int row = table.getSelectedRow();
-        if (row < 0) {
-            AppTheme.showError(this, "Please select a fine to collect.");
-            return;
-        }
-        String fineId = (String) tableModel.getValueAt(row, 0);
-        String amount = (String) tableModel.getValueAt(row, 3);
-        String status = (String) tableModel.getValueAt(row, 5);
-
-        if ("PAID".equals(status)) {
-            AppTheme.showError(this, "This fine is already paid.");
-            return;
-        }
-
-        if (AppTheme.confirm(this, "Collect fine " + fineId + " (" + amount + ")?")) {
-            try {
-                facade.fines().collectFine(session, fineId);
-                refresh(session);
-                AppTheme.showSuccess(this, "Fine collected successfully!");
-            } catch (Exception ex) {
-                AppTheme.showError(this, ex.getMessage());
-            }
+        if (row < 0) { AppTheme.error(this, "Select a fine to collect."); return; }
+        String id = (String) model.getValueAt(row, 0);
+        String st = (String) model.getValueAt(row, 5);
+        if ("PAID".equals(st)) { AppTheme.error(this, "Already paid."); return; }
+        String amt = (String) model.getValueAt(row, 3);
+        if (AppTheme.confirm(this, "Collect fine " + id + " (" + amt + ")?")) {
+            try { facade.fines().collectFine(session, id); refresh(session);
+                AppTheme.success(this, "Fine collected!"); }
+            catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
         }
     }
 }

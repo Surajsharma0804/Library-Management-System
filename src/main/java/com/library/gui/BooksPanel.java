@@ -10,196 +10,129 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Book management panel with searchable table and CRUD operations.
+ * Book catalogue management — search, add, view.
  */
 public final class BooksPanel extends JPanel {
 
     private final LibraryFacade facade;
     private JTable table;
-    private DefaultTableModel tableModel;
+    private DefaultTableModel model;
     private JTextField searchField;
     private Session session;
 
-    private static final String[] COLUMNS = {"ID", "Title", "Author", "ISBN", "Category", "Available", "Total", "Status"};
+    private static final String[] COLS = {"ID", "Title", "Author", "ISBN", "Category", "Available", "Total", "Status"};
 
     public BooksPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.bgPrimary());
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        buildUI();
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    private void buildUI() {
-        // Header
-        JPanel header = new JPanel(new BorderLayout(16, 0));
-        header.setOpaque(false);
+    private void build() {
+        JPanel hdr = new JPanel(new BorderLayout(16, 0));
+        hdr.setOpaque(false);
+        JPanel title = new JPanel();
+        title.setOpaque(false); title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
+        title.add(AppTheme.heading("Book Catalogue"));
+        title.add(Box.createVerticalStrut(4));
+        title.add(AppTheme.label2("Browse and manage the library collection"));
 
-        JLabel title = AppTheme.heading("Books");
-        JLabel subtitle = AppTheme.secondaryLabel("Manage the library book inventory");
-
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-        titlePanel.add(title);
-        titlePanel.add(Box.createVerticalStrut(4));
-        titlePanel.add(subtitle);
-
-        // Search bar
-        searchField = AppTheme.styledTextField(20);
-        searchField.setPreferredSize(new Dimension(300, 40));
-        searchField.setMaximumSize(new Dimension(300, 40));
+        searchField = AppTheme.textField(22);
         searchField.putClientProperty("JTextField.placeholderText", "Search books...");
-        searchField.addActionListener(e -> filterBooks());
+        searchField.setPreferredSize(new Dimension(280, 40));
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { filterBooks(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { filterBooks(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterBooks(); }
+            public void insertUpdate(javax.swing.event.DocumentEvent e)  { filter(); }
+            public void removeUpdate(javax.swing.event.DocumentEvent e)  { filter(); }
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { filter(); }
         });
 
-        // Buttons
-        JButton addBtn = AppTheme.primaryButton("+ Add Book");
+        JButton addBtn = AppTheme.primaryBtn("+ Add Book");
         addBtn.setPreferredSize(new Dimension(130, 40));
-        addBtn.addActionListener(e -> showAddDialog());
+        addBtn.addActionListener(e -> addBook());
 
-        JButton refreshBtn = AppTheme.secondaryButton("Refresh");
-        refreshBtn.setPreferredSize(new Dimension(100, 40));
-        refreshBtn.addActionListener(e -> refresh(session));
+        JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        acts.setOpaque(false);
+        acts.add(searchField); acts.add(addBtn);
+        hdr.add(title, BorderLayout.WEST); hdr.add(acts, BorderLayout.EAST);
 
-        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actionsPanel.setOpaque(false);
-        actionsPanel.add(searchField);
-        actionsPanel.add(addBtn);
-        actionsPanel.add(refreshBtn);
-
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(actionsPanel, BorderLayout.EAST);
-
-        // Table
-        tableModel = new DefaultTableModel(COLUMNS, 0);
-        table = new JTable(tableModel) {
-            @Override
-            public boolean isCellEditable(int row, int column) { return false; }
-
-            @Override
-            public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
-                Component c = super.prepareRenderer(renderer, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
-                } else {
-                    c.setBackground(AppTheme.ACCENT_DARK);
+        model = new DefaultTableModel(COLS, 0);
+        table = new JTable(model) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
+                Component comp = super.prepareRenderer(rn, r, c);
+                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
+                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+                comp.setForeground(AppTheme.fg());
+                if (c == 7) { String v = String.valueOf(getValueAt(r, c));
+                    if ("AVAILABLE".equals(v)) comp.setForeground(AppTheme.GREEN);
+                    else comp.setForeground(AppTheme.RED);
                 }
-                c.setForeground(AppTheme.textPrimary());
-                // Color the status column
-                if (col == 7) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    if ("AVAILABLE".equals(val)) c.setForeground(AppTheme.SUCCESS);
-                    else if ("BORROWED".equals(val)) c.setForeground(AppTheme.WARNING);
-                    else c.setForeground(AppTheme.DANGER);
-                }
-                return c;
+                return comp;
             }
         };
         AppTheme.styleTable(table);
-        table.getColumnModel().getColumn(0).setPreferredWidth(80);
-        table.getColumnModel().getColumn(1).setPreferredWidth(200);
-        table.getColumnModel().getColumn(2).setPreferredWidth(150);
-        table.getColumnModel().getColumn(3).setPreferredWidth(120);
 
-        // Context actions on double click
-        table.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
-                    showBookDetails(table.getSelectedRow());
-                }
-            }
-        });
+        JPanel tbl = new JPanel(new BorderLayout());
+        tbl.setOpaque(false);
+        tbl.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
 
-        JScrollPane sp = AppTheme.styledScrollPane(table);
-
-        // Footer with count
-        JPanel footer = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        footer.setOpaque(false);
-        footer.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-
-        add(header, BorderLayout.NORTH);
-        JPanel tableContainer = new JPanel(new BorderLayout());
-        tableContainer.setOpaque(false);
-        tableContainer.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-        tableContainer.add(sp, BorderLayout.CENTER);
-        add(tableContainer, BorderLayout.CENTER);
+        add(hdr, BorderLayout.NORTH); add(tbl, BorderLayout.CENTER);
     }
 
-    public void refresh(Session session) {
-        this.session = session;
-        tableModel.setRowCount(0);
-        List<Book> books = facade.bookRepo().findAll();
-        for (Book b : books) {
-            tableModel.addRow(new Object[]{
-                    b.getId(), b.getTitle(), b.getAuthor(), b.getIsbn(),
-                    b.getCategory() != null ? b.getCategory() : "-",
-                    b.getAvailableQuantity(), b.getTotalQuantity(),
-                    b.getStatus().name()
-            });
-        }
+    public void refresh(Session s) {
+        this.session = s;
+        setBackground(AppTheme.bg());
+        load(facade.bookRepo().findAll());
     }
 
-    private void filterBooks() {
-        String query = searchField.getText().trim().toLowerCase();
-        tableModel.setRowCount(0);
-        List<Book> books = facade.bookRepo().findAll();
-        for (Book b : books) {
-            if (query.isEmpty()
-                    || b.getTitle().toLowerCase().contains(query)
-                    || b.getAuthor().toLowerCase().contains(query)
-                    || b.getIsbn().toLowerCase().contains(query)
-                    || (b.getCategory() != null && b.getCategory().toLowerCase().contains(query))) {
-                tableModel.addRow(new Object[]{
-                        b.getId(), b.getTitle(), b.getAuthor(), b.getIsbn(),
-                        b.getCategory() != null ? b.getCategory() : "-",
-                        b.getAvailableQuantity(), b.getTotalQuantity(),
-                        b.getStatus().name()
-                });
-            }
-        }
+    private void load(List<Book> books) {
+        model.setRowCount(0);
+        for (Book b : books) model.addRow(new Object[]{
+                b.getId(), b.getTitle(), b.getAuthor(), b.getIsbn(),
+                b.getCategory() != null ? b.getCategory() : "-",
+                b.getAvailableQuantity(), b.getTotalQuantity(),
+                b.getStatus().name()});
     }
 
-    private void showAddDialog() {
+    private void filter() {
+        String q = searchField.getText().trim().toLowerCase();
+        List<Book> all = facade.bookRepo().findAll();
+        if (q.isEmpty()) { load(all); return; }
+        load(all.stream().filter(b ->
+                b.getTitle().toLowerCase().contains(q) ||
+                b.getAuthor().toLowerCase().contains(q) ||
+                (b.getIsbn() != null && b.getIsbn().toLowerCase().contains(q)) ||
+                (b.getCategory() != null && b.getCategory().toLowerCase().contains(q))
+        ).toList());
+    }
+
+    private void addBook() {
         if (session == null) return;
-        JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
-        form.setBackground(AppTheme.bgSecondary());
-        JTextField titleF = new JTextField(20); JTextField authorF = new JTextField(20);
-        JTextField isbnF = new JTextField(20); JTextField qtyF = new JTextField("1");
-        form.add(lbl("Title:")); form.add(titleF);
-        form.add(lbl("Author:")); form.add(authorF);
-        form.add(lbl("ISBN:")); form.add(isbnF);
-        form.add(lbl("Quantity:")); form.add(qtyF);
-
-        int result = JOptionPane.showConfirmDialog(this, form, "Add New Book", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
+        JPanel f = new JPanel(new GridLayout(0, 2, 10, 10));
+        JTextField ti = new JTextField(), au = new JTextField(), is = new JTextField();
+        JTextField pu = new JTextField(), ca = new JTextField(), qt = new JTextField("1");
+        f.add(lbl("Title:")); f.add(ti);
+        f.add(lbl("Author:")); f.add(au);
+        f.add(lbl("ISBN:")); f.add(is);
+        f.add(lbl("Publisher:")); f.add(pu);
+        f.add(lbl("Category:")); f.add(ca);
+        f.add(lbl("Quantity:")); f.add(qt);
+        if (JOptionPane.showConfirmDialog(this, f, "Add New Book",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
             try {
-                int qty = Integer.parseInt(qtyF.getText().trim());
-                facade.books().addBook(session, isbnF.getText().trim(),
-                        titleF.getText().trim(), authorF.getText().trim(), qty);
+                Book b = facade.factory().createBook(is.getText().trim(), ti.getText().trim(),
+                        au.getText().trim(), Integer.parseInt(qt.getText().trim()));
+                b.setPublisher(pu.getText().trim());
+                b.setCategory(ca.getText().trim());
+                facade.bookRepo().save(b);
                 refresh(session);
-                AppTheme.showSuccess(this, "Book added successfully!");
-            } catch (Exception ex) {
-                AppTheme.showError(this, ex.getMessage());
-            }
+                AppTheme.success(this, "Book added!\nID: " + b.getId());
+            } catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
         }
     }
 
-    private void showBookDetails(int row) {
-        String id = (String) tableModel.getValueAt(row, 0);
-        String info = String.format(
-                "ID: %s\nTitle: %s\nAuthor: %s\nISBN: %s\nCategory: %s\nAvailable: %s / %s\nStatus: %s",
-                tableModel.getValueAt(row, 0), tableModel.getValueAt(row, 1),
-                tableModel.getValueAt(row, 2), tableModel.getValueAt(row, 3),
-                tableModel.getValueAt(row, 4), tableModel.getValueAt(row, 5),
-                tableModel.getValueAt(row, 6), tableModel.getValueAt(row, 7));
-        JOptionPane.showMessageDialog(this, info, "Book Details", JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private JLabel lbl(String t) { JLabel l = new JLabel(t); l.setFont(AppTheme.FONT_BODY); return l; }
+    private JLabel lbl(String t) { var l = new JLabel(t); l.setFont(AppTheme.BODY); return l; }
 }

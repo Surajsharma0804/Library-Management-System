@@ -10,173 +10,125 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Borrow and return panel — issue books, return books, view active borrows.
+ * Circulation panel — issue, return, and renew book borrows.
  */
 public final class BorrowPanel extends JPanel {
 
     private final LibraryFacade facade;
     private JTable table;
-    private DefaultTableModel tableModel;
+    private DefaultTableModel model;
     private Session session;
 
-    private static final String[] COLUMNS = {"Borrow ID", "Book ID", "Student Reg", "Issue Date", "Due Date", "Status", "Days Left"};
+    private static final String[] COLS = {"Borrow ID", "Book ID", "Student Reg", "Issue Date", "Due Date", "Status", "Remaining"};
 
     public BorrowPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.bgPrimary());
+        setBackground(AppTheme.bg());
         setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
-        buildUI();
+        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        build();
     }
 
-    private void buildUI() {
-        JPanel header = new JPanel(new BorderLayout(16, 0));
-        header.setOpaque(false);
+    private void build() {
+        JPanel hdr = new JPanel(new BorderLayout(16, 0));
+        hdr.setOpaque(false);
+        JPanel title = new JPanel();
+        title.setOpaque(false); title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
+        title.add(AppTheme.heading("Circulation"));
+        title.add(Box.createVerticalStrut(4));
+        title.add(AppTheme.label2("Issue, return, and renew book borrows"));
 
-        JPanel titlePanel = new JPanel();
-        titlePanel.setOpaque(false);
-        titlePanel.setLayout(new BoxLayout(titlePanel, BoxLayout.Y_AXIS));
-        titlePanel.add(AppTheme.heading("Borrow & Return"));
-        titlePanel.add(Box.createVerticalStrut(4));
-        titlePanel.add(AppTheme.secondaryLabel("Issue and return books, manage active borrows"));
-
-        JButton issueBtn = AppTheme.primaryButton("Issue Book");
-        issueBtn.setPreferredSize(new Dimension(130, 40));
-        issueBtn.addActionListener(e -> showIssueDialog());
-
-        JButton returnBtn = AppTheme.secondaryButton("Return Book");
-        returnBtn.setPreferredSize(new Dimension(130, 40));
-        returnBtn.addActionListener(e -> showReturnDialog());
-
-        JButton renewBtn = AppTheme.secondaryButton("Renew");
+        JButton issueBtn  = AppTheme.primaryBtn("Issue Book");
+        JButton returnBtn = AppTheme.secondaryBtn("Return Book");
+        JButton renewBtn  = AppTheme.secondaryBtn("Renew");
+        issueBtn.setPreferredSize(new Dimension(120, 40));
+        returnBtn.setPreferredSize(new Dimension(120, 40));
         renewBtn.setPreferredSize(new Dimension(100, 40));
-        renewBtn.addActionListener(e -> showRenewDialog());
+        issueBtn.addActionListener(e -> issueBook());
+        returnBtn.addActionListener(e -> returnBook());
+        renewBtn.addActionListener(e -> renewBook());
 
-        JPanel actionsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        actionsPanel.setOpaque(false);
-        actionsPanel.add(issueBtn);
-        actionsPanel.add(returnBtn);
-        actionsPanel.add(renewBtn);
+        JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        acts.setOpaque(false);
+        acts.add(issueBtn); acts.add(returnBtn); acts.add(renewBtn);
+        hdr.add(title, BorderLayout.WEST); hdr.add(acts, BorderLayout.EAST);
 
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(actionsPanel, BorderLayout.EAST);
-
-        tableModel = new DefaultTableModel(COLUMNS, 0);
-        table = new JTable(tableModel) {
+        model = new DefaultTableModel(COLS, 0);
+        table = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
-                Component c = super.prepareRenderer(renderer, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
-                } else { c.setBackground(AppTheme.ACCENT_DARK); }
-                c.setForeground(AppTheme.textPrimary());
-                if (col == 5) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    switch (val) {
-                        case "ACTIVE" -> c.setForeground(AppTheme.SUCCESS);
-                        case "RETURNED_LATE" -> c.setForeground(AppTheme.DANGER);
-                        case "RETURNED" -> c.setForeground(AppTheme.textMuted());
-                        default -> c.setForeground(AppTheme.WARNING);
-                    }
+            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
+                Component comp = super.prepareRenderer(rn, r, c);
+                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
+                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+                comp.setForeground(AppTheme.fg());
+                if (c == 5) { String v = String.valueOf(getValueAt(r, c));
+                    if ("ACTIVE".equals(v)) comp.setForeground(AppTheme.GREEN);
+                    else if ("OVERDUE".equals(v)) comp.setForeground(AppTheme.RED);
+                    else comp.setForeground(AppTheme.fgMuted());
                 }
-                if (col == 6) {
-                    String val = String.valueOf(getValueAt(row, col));
-                    try {
-                        long days = Long.parseLong(val);
-                        if (days <= 2) c.setForeground(AppTheme.DANGER);
-                        else if (days <= 5) c.setForeground(AppTheme.WARNING);
-                        else c.setForeground(AppTheme.SUCCESS);
-                    } catch (NumberFormatException ignored) {}
-                }
-                return c;
+                return comp;
             }
         };
         AppTheme.styleTable(table);
 
-        JScrollPane sp = AppTheme.styledScrollPane(table);
-        JPanel tableContainer = new JPanel(new BorderLayout());
-        tableContainer.setOpaque(false);
-        tableContainer.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-        tableContainer.add(sp, BorderLayout.CENTER);
+        JPanel tbl = new JPanel(new BorderLayout());
+        tbl.setOpaque(false); tbl.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
 
-        add(header, BorderLayout.NORTH);
-        add(tableContainer, BorderLayout.CENTER);
+        add(hdr, BorderLayout.NORTH); add(tbl, BorderLayout.CENTER);
     }
 
-    public void refresh(Session session) {
-        this.session = session;
-        tableModel.setRowCount(0);
-        List<BorrowRecord> records = facade.borrowRepo().findAll();
-        // Show most recent first
-        records.stream()
-                .sorted((a, b) -> {
-                    if (a.getIssueDate() == null || b.getIssueDate() == null) return 0;
-                    return b.getIssueDate().compareTo(a.getIssueDate());
-                })
-                .forEach(r -> tableModel.addRow(new Object[]{
-                        r.getId(), r.getBookId(), r.getRegistrationNumber(),
-                        r.getIssueDate(), r.getDueDate(),
-                        r.getStatus().name(),
-                        r.getStatus() == com.library.enums.BorrowStatus.ACTIVE ? r.remainingDays() : "-"
-                }));
+    public void refresh(Session s) {
+        this.session = s; setBackground(AppTheme.bg());
+        model.setRowCount(0);
+        List<BorrowRecord> recs = facade.borrows().findAllActive();
+        for (BorrowRecord r : recs) {
+            String status = r.isOverdue() ? "OVERDUE" : r.getStatus().name();
+            String remain = r.isOverdue() ? r.overdueDays() + "d overdue" : r.remainingDays() + " days";
+            model.addRow(new Object[]{r.getId(), r.getBookId(), r.getRegistrationNumber(),
+                    r.getIssueDate().toString(), r.getDueDate().toString(), status, remain});
+        }
     }
 
-    private void showIssueDialog() {
+    private void issueBook() {
         if (session == null) return;
-        JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
-        JTextField bookIdF = new JTextField(); JTextField regF = new JTextField();
-        form.add(lbl("Book ID:")); form.add(bookIdF);
-        form.add(lbl("Student Reg No:")); form.add(regF);
-
-        int result = JOptionPane.showConfirmDialog(this, form, "Issue Book", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
+        JPanel f = new JPanel(new GridLayout(2, 2, 10, 10));
+        JTextField bk = new JTextField(), st = new JTextField();
+        f.add(new JLabel("Book ID:")); f.add(bk);
+        f.add(new JLabel("Student Reg No:")); f.add(st);
+        if (JOptionPane.showConfirmDialog(this, f, "Issue Book",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
             try {
-                facade.borrows().issueBook(session, bookIdF.getText().trim(), regF.getText().trim());
+                facade.borrows().issueBook(session, bk.getText().trim(), st.getText().trim());
                 refresh(session);
-                AppTheme.showSuccess(this, "Book issued successfully!");
-            } catch (Exception ex) {
-                AppTheme.showError(this, ex.getMessage());
-            }
+                AppTheme.success(this, "Book issued successfully!");
+            } catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
         }
     }
 
-    private void showReturnDialog() {
+    private void returnBook() {
         if (session == null) return;
         int row = table.getSelectedRow();
-        String borrowId;
-        if (row >= 0) {
-            borrowId = (String) tableModel.getValueAt(row, 0);
-        } else {
-            borrowId = JOptionPane.showInputDialog(this, "Enter Borrow ID:");
-            if (borrowId == null || borrowId.trim().isEmpty()) return;
-        }
+        String id = row >= 0 ? (String) model.getValueAt(row, 0) :
+                JOptionPane.showInputDialog(this, "Enter Borrow ID:");
+        if (id == null || id.trim().isEmpty()) return;
         try {
-            facade.borrows().returnBook(session, borrowId.trim());
+            facade.borrows().returnBook(session, id.trim());
             refresh(session);
-            AppTheme.showSuccess(this, "Book returned successfully!");
-        } catch (Exception ex) {
-            AppTheme.showError(this, ex.getMessage());
-        }
+            AppTheme.success(this, "Book returned successfully!");
+        } catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
     }
 
-    private void showRenewDialog() {
+    private void renewBook() {
         if (session == null) return;
         int row = table.getSelectedRow();
-        String borrowId;
-        if (row >= 0) {
-            borrowId = (String) tableModel.getValueAt(row, 0);
-        } else {
-            borrowId = JOptionPane.showInputDialog(this, "Enter Borrow ID:");
-            if (borrowId == null || borrowId.trim().isEmpty()) return;
-        }
+        String id = row >= 0 ? (String) model.getValueAt(row, 0) :
+                JOptionPane.showInputDialog(this, "Enter Borrow ID:");
+        if (id == null || id.trim().isEmpty()) return;
         try {
-            facade.borrows().renewBook(session, borrowId.trim());
+            facade.borrows().renewBook(session, id.trim());
             refresh(session);
-            AppTheme.showSuccess(this, "Borrow renewed successfully!");
-        } catch (Exception ex) {
-            AppTheme.showError(this, ex.getMessage());
-        }
+            AppTheme.success(this, "Borrow renewed successfully!");
+        } catch (Exception ex) { AppTheme.error(this, ex.getMessage()); }
     }
-
-    private JLabel lbl(String t) { JLabel l = new JLabel(t); l.setFont(AppTheme.FONT_BODY); return l; }
 }
