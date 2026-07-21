@@ -59,7 +59,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.library.LibraryManagementApplication</mainClass>
+                            <mainClass>com.library.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
