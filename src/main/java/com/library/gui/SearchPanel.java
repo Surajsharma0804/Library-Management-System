@@ -25,7 +25,7 @@ public final class SearchPanel extends JPanel {
 
     public SearchPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.BG_PRIMARY);
+        setBackground(AppTheme.bgPrimary());
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         buildUI();
@@ -47,7 +47,7 @@ public final class SearchPanel extends JPanel {
             protected void paintComponent(Graphics g) {
                 AppTheme.applyAntiAliasing(g);
                 Graphics2D g2 = (Graphics2D) g;
-                g2.setColor(AppTheme.BG_CARD);
+                g2.setColor(AppTheme.bgCard());
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.CARD_ARC, AppTheme.CARD_ARC));
             }
         };
@@ -106,9 +106,9 @@ public final class SearchPanel extends JPanel {
             @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
                 Component c = super.prepareRenderer(renderer, row, col);
                 if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.BG_SECONDARY : AppTheme.TABLE_ROW_ALT);
+                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
                 } else { c.setBackground(AppTheme.ACCENT_DARK); }
-                c.setForeground(AppTheme.TEXT_PRIMARY);
+                c.setForeground(AppTheme.textPrimary());
                 if (col == 7) {
                     String val = String.valueOf(getValueAt(row, col));
                     if ("AVAILABLE".equals(val)) c.setForeground(AppTheme.SUCCESS);
@@ -172,7 +172,7 @@ public final class SearchPanel extends JPanel {
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         JLabel lbl = new JLabel(label);
         lbl.setFont(AppTheme.FONT_SMALL);
-        lbl.setForeground(AppTheme.TEXT_SECONDARY);
+        lbl.setForeground(AppTheme.textSecondary());
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setAlignmentX(Component.LEFT_ALIGNMENT);
         field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));

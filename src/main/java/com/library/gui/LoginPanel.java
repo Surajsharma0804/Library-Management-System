@@ -9,46 +9,58 @@ import java.awt.event.ActionEvent;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * Professional login screen with branding and animated form.
+ * Professional login screen with role selector and branding.
  */
 public final class LoginPanel extends JPanel {
 
     private final LibraryFacade facade;
     private final Runnable onLoginSuccess;
-    private final JTextField usernameField;
-    private final JPasswordField passwordField;
-    private final JLabel errorLabel;
+    private JTextField usernameField;
+    private JPasswordField passwordField;
+    private JComboBox<String> roleCombo;
+    private JLabel errorLabel;
     private String currentToken;
 
     public LoginPanel(LibraryFacade facade, Runnable onLoginSuccess) {
         this.facade = facade;
         this.onLoginSuccess = onLoginSuccess;
-        setBackground(AppTheme.BG_PRIMARY);
         setLayout(new GridBagLayout());
+        buildUI();
+    }
 
-        // Center card
+    private void buildUI() {
+        removeAll();
+        setBackground(AppTheme.bgPrimary());
+
         JPanel card = new JPanel() {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 AppTheme.applyAntiAliasing(g);
                 Graphics2D g2 = (Graphics2D) g;
-                g2.setColor(new Color(0, 0, 0, 40));
+                // Shadow
+                g2.setColor(new Color(0, 0, 0, AppTheme.isDarkMode() ? 40 : 15));
                 g2.fill(new RoundRectangle2D.Float(4, 4, getWidth() - 4, getHeight() - 4, 20, 20));
-                g2.setColor(AppTheme.BG_SECONDARY);
+                // Card
+                g2.setColor(AppTheme.bgSecondary());
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 4, getHeight() - 4, 20, 20));
+                // Border in light mode
+                if (!AppTheme.isDarkMode()) {
+                    g2.setColor(AppTheme.border());
+                    g2.setStroke(new BasicStroke(1f));
+                    g2.draw(new RoundRectangle2D.Float(0, 0, getWidth() - 5, getHeight() - 5, 20, 20));
+                }
+                // Top accent
                 g2.setColor(AppTheme.ACCENT);
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth() - 4, 4, 4, 4));
             }
         };
         card.setOpaque(false);
-        card.setPreferredSize(new Dimension(420, 520));
+        card.setPreferredSize(new Dimension(430, 600));
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createEmptyBorder(40, 40, 40, 40));
+        card.setBorder(BorderFactory.createEmptyBorder(36, 40, 36, 40));
 
-        // Logo icon
+        // Logo
         JLabel iconLabel = new JLabel() {
-            @Override
-            protected void paintComponent(Graphics g) {
+            @Override protected void paintComponent(Graphics g) {
                 AppTheme.applyAntiAliasing(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setColor(AppTheme.ACCENT_DARK);
@@ -65,34 +77,31 @@ public final class LoginPanel extends JPanel {
         iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel title = new JLabel("University Central Library");
-        title.setFont(AppTheme.FONT_LOGO);
-        title.setForeground(AppTheme.TEXT_PRIMARY);
+        title.setFont(AppTheme.FONT_LOGO); title.setForeground(AppTheme.textPrimary());
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel subtitle = new JLabel("Library Management System");
-        subtitle.setFont(AppTheme.FONT_SMALL);
-        subtitle.setForeground(AppTheme.TEXT_SECONDARY);
+        JLabel subtitle = new JLabel("Library Management System v1.0.0");
+        subtitle.setFont(AppTheme.FONT_SMALL); subtitle.setForeground(AppTheme.textSecondary());
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        // Role selector
+        JLabel roleLabel = makeFieldLabel("Login As");
+        roleCombo = AppTheme.styledComboBox(new String[]{"Administrator", "Librarian", "Student"});
+        roleCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         // Username
-        JLabel userLabel = new JLabel("Username");
-        userLabel.setFont(AppTheme.FONT_SMALL);
-        userLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        userLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel userLabel = makeFieldLabel("Username");
         usernameField = AppTheme.styledTextField(20);
         usernameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         usernameField.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Password
-        JLabel passLabel = new JLabel("Password");
-        passLabel.setFont(AppTheme.FONT_SMALL);
-        passLabel.setForeground(AppTheme.TEXT_SECONDARY);
-        passLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JLabel passLabel = makeFieldLabel("Password");
         passwordField = AppTheme.styledPasswordField(20);
         passwordField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         passwordField.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Error label
+        // Error
         errorLabel = new JLabel(" ");
         errorLabel.setFont(AppTheme.FONT_SMALL);
         errorLabel.setForeground(AppTheme.DANGER);
@@ -100,25 +109,30 @@ public final class LoginPanel extends JPanel {
 
         // Login button
         JButton loginBtn = AppTheme.primaryButton("Sign In");
-        loginBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        loginBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         loginBtn.setAlignmentX(Component.LEFT_ALIGNMENT);
         loginBtn.addActionListener(this::doLogin);
-
         passwordField.addActionListener(this::doLogin);
         usernameField.addActionListener(e -> passwordField.requestFocusInWindow());
 
-        // Version label
-        JLabel versionLabel = new JLabel("v1.0.0");
-        versionLabel.setFont(AppTheme.FONT_SMALL);
-        versionLabel.setForeground(AppTheme.TEXT_MUTED);
-        versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        // Theme toggle at top-right of card
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        topBar.setOpaque(false);
+        topBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        topBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        topBar.add(AppTheme.themeToggleButton());
 
+        card.add(topBar);
         card.add(iconLabel);
-        card.add(Box.createVerticalStrut(16));
+        card.add(Box.createVerticalStrut(14));
         card.add(title);
         card.add(Box.createVerticalStrut(4));
         card.add(subtitle);
-        card.add(Box.createVerticalStrut(32));
+        card.add(Box.createVerticalStrut(28));
+        card.add(roleLabel);
+        card.add(Box.createVerticalStrut(6));
+        card.add(roleCombo);
+        card.add(Box.createVerticalStrut(16));
         card.add(userLabel);
         card.add(Box.createVerticalStrut(6));
         card.add(usernameField);
@@ -130,10 +144,17 @@ public final class LoginPanel extends JPanel {
         card.add(errorLabel);
         card.add(Box.createVerticalStrut(16));
         card.add(loginBtn);
-        card.add(Box.createVerticalStrut(16));
-        card.add(versionLabel);
 
         add(card);
+        revalidate(); repaint();
+    }
+
+    private JLabel makeFieldLabel(String text) {
+        JLabel lbl = new JLabel(text);
+        lbl.setFont(AppTheme.FONT_SMALL);
+        lbl.setForeground(AppTheme.textSecondary());
+        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return lbl;
     }
 
     private void doLogin(ActionEvent e) {
@@ -146,7 +167,6 @@ public final class LoginPanel extends JPanel {
         }
 
         try {
-            // login() returns a token string
             currentToken = facade.auth().login(username, password);
             errorLabel.setText(" ");
             onLoginSuccess.run();
@@ -157,15 +177,15 @@ public final class LoginPanel extends JPanel {
         }
     }
 
-    /** Returns the token from the last successful login. */
-    public String getToken() {
-        return currentToken;
-    }
+    public String getToken() { return currentToken; }
 
-    /** Gets the full Session object using the stored token. */
     public Session getSession() {
         if (currentToken == null) return null;
         return facade.sessions().require(currentToken);
+    }
+
+    public String getSelectedRole() {
+        return (String) roleCombo.getSelectedItem();
     }
 
     public void reset() {
@@ -174,5 +194,12 @@ public final class LoginPanel extends JPanel {
         errorLabel.setText(" ");
         usernameField.requestFocusInWindow();
         currentToken = null;
+    }
+
+    /** Rebuilds UI for theme change. */
+    public void applyTheme() {
+        String savedUser = usernameField != null ? usernameField.getText() : "";
+        buildUI();
+        usernameField.setText(savedUser);
     }
 }

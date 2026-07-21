@@ -24,7 +24,7 @@ public final class BooksPanel extends JPanel {
 
     public BooksPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.BG_PRIMARY);
+        setBackground(AppTheme.bgPrimary());
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         buildUI();
@@ -85,11 +85,11 @@ public final class BooksPanel extends JPanel {
             public Component prepareRenderer(javax.swing.table.TableCellRenderer renderer, int row, int col) {
                 Component c = super.prepareRenderer(renderer, row, col);
                 if (!isRowSelected(row)) {
-                    c.setBackground(row % 2 == 0 ? AppTheme.BG_SECONDARY : AppTheme.TABLE_ROW_ALT);
+                    c.setBackground(row % 2 == 0 ? AppTheme.bgSecondary() : AppTheme.tableRowAlt());
                 } else {
                     c.setBackground(AppTheme.ACCENT_DARK);
                 }
-                c.setForeground(AppTheme.TEXT_PRIMARY);
+                c.setForeground(AppTheme.textPrimary());
                 // Color the status column
                 if (col == 7) {
                     String val = String.valueOf(getValueAt(row, col));
@@ -168,7 +168,7 @@ public final class BooksPanel extends JPanel {
     private void showAddDialog() {
         if (session == null) return;
         JPanel form = new JPanel(new GridLayout(0, 2, 10, 10));
-        form.setBackground(AppTheme.BG_SECONDARY);
+        form.setBackground(AppTheme.bgSecondary());
         JTextField titleF = new JTextField(20); JTextField authorF = new JTextField(20);
         JTextField isbnF = new JTextField(20); JTextField qtyF = new JTextField("1");
         form.add(lbl("Title:")); form.add(titleF);

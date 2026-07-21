@@ -21,7 +21,7 @@ public final class DashboardPanel extends JPanel {
 
     public DashboardPanel(LibraryFacade facade) {
         this.facade = facade;
-        setBackground(AppTheme.BG_PRIMARY);
+        setBackground(AppTheme.bgPrimary());
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
     }
@@ -36,19 +36,19 @@ public final class DashboardPanel extends JPanel {
 
         welcomeLabel = new JLabel("Welcome back, " + session.username());
         welcomeLabel.setFont(AppTheme.FONT_TITLE);
-        welcomeLabel.setForeground(AppTheme.TEXT_PRIMARY);
+        welcomeLabel.setForeground(AppTheme.textPrimary());
         welcomeLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         roleLabel = new JLabel(session.role().name() + " Dashboard");
         roleLabel.setFont(AppTheme.FONT_BODY);
-        roleLabel.setForeground(AppTheme.TEXT_SECONDARY);
+        roleLabel.setForeground(AppTheme.textSecondary());
         roleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         String time = java.time.LocalDateTime.now()
                 .format(java.time.format.DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy  |  hh:mm a"));
         timestampLabel = new JLabel(time);
         timestampLabel.setFont(AppTheme.FONT_SMALL);
-        timestampLabel.setForeground(AppTheme.TEXT_MUTED);
+        timestampLabel.setForeground(AppTheme.textMuted());
         timestampLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         header.add(welcomeLabel);
@@ -101,7 +101,7 @@ public final class DashboardPanel extends JPanel {
             protected void paintComponent(Graphics g) {
                 AppTheme.applyAntiAliasing(g);
                 Graphics2D g2 = (Graphics2D) g;
-                g2.setColor(AppTheme.BG_CARD);
+                g2.setColor(AppTheme.bgCard());
                 g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), AppTheme.CARD_ARC, AppTheme.CARD_ARC));
             }
         };
@@ -111,17 +111,17 @@ public final class DashboardPanel extends JPanel {
 
         JLabel actionsTitle = new JLabel("System Information");
         actionsTitle.setFont(AppTheme.FONT_SUBHEADING);
-        actionsTitle.setForeground(AppTheme.TEXT_PRIMARY);
+        actionsTitle.setForeground(AppTheme.textPrimary());
         actionsTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel ver = new JLabel("Version 1.0.0  |  Java " + System.getProperty("java.version"));
         ver.setFont(AppTheme.FONT_SMALL);
-        ver.setForeground(AppTheme.TEXT_MUTED);
+        ver.setForeground(AppTheme.textMuted());
         ver.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JLabel sessionInfo = new JLabel("Session: " + session.token().substring(0, 8) + "...  |  Role: " + session.role());
         sessionInfo.setFont(AppTheme.FONT_SMALL);
-        sessionInfo.setForeground(AppTheme.TEXT_MUTED);
+        sessionInfo.setForeground(AppTheme.textMuted());
         sessionInfo.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         actionsCard.add(actionsTitle);
