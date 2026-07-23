@@ -8,29 +8,43 @@ import java.util.List;
 
 /**
  * JSON-backed repository for {@link BorrowRecord} entities.
+ * Uses secondary indexes for O(1) lookups by registrationNumber and bookId.
  */
-public final class BorrowRepository extends JsonRepository<BorrowRecord, String> {
+public final class BorrowRepository extends IndexedRepository<BorrowRecord, String> {
 
     public BorrowRepository() {
         super(Constants.BORROW_RECORDS_FILE, new BorrowMapper(), BorrowRecord::getId);
+        registerSecondaryIndex("registrationNumber");
+        registerSecondaryIndex("bookId");
+    }
+
+    @Override
+    protected String secondaryKey(String indexName, BorrowRecord entity) {
+        return switch (indexName) {
+            case "registrationNumber" -> entity.getRegistrationNumber();
+            case "bookId"             -> entity.getBookId();
+            default                   -> null;
+        };
     }
 
     public List<BorrowRecord> findByRegistrationNumber(String reg) {
-        return findAll(r -> reg != null && reg.equals(r.getRegistrationNumber()));
+        return findAllBySecondaryKey("registrationNumber", reg);
     }
 
     public List<BorrowRecord> findActiveByRegistrationNumber(String reg) {
-        return findAll(r -> reg != null && reg.equals(r.getRegistrationNumber())
-                && r.getStatus() == com.library.enums.BorrowStatus.ACTIVE);
+        return findAllBySecondaryKey("registrationNumber", reg).stream()
+                .filter(r -> r.getStatus() == com.library.enums.BorrowStatus.ACTIVE)
+                .toList();
     }
 
     public List<BorrowRecord> findByBookId(String bookId) {
-        return findAll(r -> bookId != null && bookId.equals(r.getBookId()));
+        return findAllBySecondaryKey("bookId", bookId);
     }
 
     public List<BorrowRecord> findActiveByBookId(String bookId) {
-        return findAll(r -> bookId != null && bookId.equals(r.getBookId())
-                && r.getStatus() == com.library.enums.BorrowStatus.ACTIVE);
+        return findAllBySecondaryKey("bookId", bookId).stream()
+                .filter(r -> r.getStatus() == com.library.enums.BorrowStatus.ACTIVE)
+                .toList();
     }
 
     public List<BorrowRecord> findAllActive() {
