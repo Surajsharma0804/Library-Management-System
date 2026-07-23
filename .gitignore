@@ -27,3 +27,8 @@ node_modules/
 
 # Antigravity / Gemini
 .agents/
+*.log
+*.txt
+.jqwik-database
+.kiro/
+compile_test.bat
