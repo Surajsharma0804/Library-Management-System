@@ -26,6 +26,9 @@ public class Student extends User {
     private int currentBorrowCount;
     private long fineBalancePaise;
     private MembershipStatus membershipStatus;
+    private String homeBranchId;
+    private String membershipTierId;
+    private String program;
 
     public Student(Builder b) {
         super(b);
@@ -42,6 +45,9 @@ public class Student extends User {
         this.currentBorrowCount = b.currentBorrowCount;
         this.fineBalancePaise = b.fineBalancePaise;
         this.membershipStatus = b.membershipStatus == null ? MembershipStatus.ACTIVE : b.membershipStatus;
+        this.homeBranchId = b.homeBranchId;
+        this.membershipTierId = b.membershipTierId;
+        this.program = b.program;
     }
 
     @Override
@@ -63,6 +69,9 @@ public class Student extends User {
     public long getFineBalancePaise() { return fineBalancePaise; }
     public double getFineBalance() { return fineBalancePaise / 100.0; }
     public MembershipStatus getMembershipStatus() { return membershipStatus; }
+    public String getHomeBranchId() { return homeBranchId; }
+    public String getMembershipTierId() { return membershipTierId; }
+    public String getProgram() { return program; }
 
     public void setDepartment(String department) { this.department = department; touch(); }
     public void setCourse(String course) { this.course = course; touch(); }
@@ -73,6 +82,9 @@ public class Student extends User {
     public void setMembershipExpiry(LocalDate membershipExpiry) { this.membershipExpiry = membershipExpiry; touch(); }
     public void setBorrowLimit(int borrowLimit) { this.borrowLimit = borrowLimit; touch(); }
     public void setMembershipStatus(MembershipStatus membershipStatus) { this.membershipStatus = membershipStatus; touch(); }
+    public void setHomeBranchId(String homeBranchId) { this.homeBranchId = homeBranchId; touch(); }
+    public void setMembershipTierId(String membershipTierId) { this.membershipTierId = membershipTierId; touch(); }
+    public void setProgram(String program) { this.program = program; touch(); }
 
     public void incrementBorrowCount() { this.currentBorrowCount++; touch(); }
     public void decrementBorrowCount() { this.currentBorrowCount = Math.max(0, this.currentBorrowCount - 1); touch(); }
@@ -106,6 +118,9 @@ public class Student extends User {
         private int currentBorrowCount;
         private long fineBalancePaise;
         private MembershipStatus membershipStatus;
+        private String homeBranchId;
+        private String membershipTierId;
+        private String program;
 
         public Builder registrationNumber(String v) { this.registrationNumber = v; return this; }
         public Builder libraryCardNumber(String v) { this.libraryCardNumber = v; return this; }
@@ -120,6 +135,9 @@ public class Student extends User {
         public Builder currentBorrowCount(int v) { this.currentBorrowCount = v; return this; }
         public Builder fineBalancePaise(long v) { this.fineBalancePaise = v; return this; }
         public Builder membershipStatus(MembershipStatus v) { this.membershipStatus = v; return this; }
+        public Builder homeBranchId(String v) { this.homeBranchId = v; return this; }
+        public Builder membershipTierId(String v) { this.membershipTierId = v; return this; }
+        public Builder program(String v) { this.program = v; return this; }
 
         public Student build() {
             return new Student(this);
