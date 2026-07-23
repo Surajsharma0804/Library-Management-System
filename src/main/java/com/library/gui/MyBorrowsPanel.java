@@ -11,10 +11,10 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * Student-specific borrow view — shows only the logged-in
- * student's active and past borrows.
+ * Executive My Borrows Panel — Student view of active and past book loans.
  *
  * @author University Central Library — Software Engineering Division
+ * @version 2.0.0
  */
 public final class MyBorrowsPanel extends JPanel {
 
@@ -28,53 +28,59 @@ public final class MyBorrowsPanel extends JPanel {
     public MyBorrowsPanel(LibraryFacade facade) {
         this.facade = facade;
         setBackground(AppTheme.bg());
-        setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        setLayout(new BorderLayout(0, 16));
+        setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         build();
     }
 
     private void build() {
         JPanel hdr = new JPanel(new BorderLayout(16, 0));
         hdr.setOpaque(false);
+
         JPanel title = new JPanel();
-        title.setOpaque(false); title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
-        title.add(AppTheme.heading("My Borrows"));
+        title.setOpaque(false);
+        title.setLayout(new BoxLayout(title, BoxLayout.Y_AXIS));
+        title.add(AppTheme.heading("My Borrowed Books"));
         title.add(Box.createVerticalStrut(4));
-        title.add(AppTheme.label2("Books you have currently borrowed or previously returned"));
+        title.add(AppTheme.label2("Detailed log of books currently checked out or previously returned"));
 
         JButton refreshBtn = AppTheme.secondaryBtn("Refresh");
-        refreshBtn.setPreferredSize(new Dimension(100, 40));
+        refreshBtn.setPreferredSize(new Dimension(100, 38));
         refreshBtn.addActionListener(e -> refresh(session));
 
         JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         acts.setOpaque(false);
         acts.add(refreshBtn);
-        hdr.add(title, BorderLayout.WEST); hdr.add(acts, BorderLayout.EAST);
+
+        hdr.add(title, BorderLayout.WEST);
+        hdr.add(acts, BorderLayout.EAST);
 
         model = new DefaultTableModel(COLS, 0);
         table = new JTable(model) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
-            @Override public Component prepareRenderer(javax.swing.table.TableCellRenderer rn, int r, int c) {
-                Component comp = super.prepareRenderer(rn, r, c);
-                if (!isRowSelected(r)) comp.setBackground(r % 2 == 0 ? AppTheme.bgCard() : AppTheme.tableAlt());
-                else comp.setBackground(new Color(AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
-                comp.setForeground(AppTheme.fg());
-                if (c == 4) {
-                    String v = String.valueOf(getValueAt(r, c));
-                    if ("ACTIVE".equals(v)) comp.setForeground(AppTheme.GREEN);
-                    else if ("OVERDUE".equals(v)) comp.setForeground(AppTheme.RED);
-                    else if ("RETURNED".equals(v)) comp.setForeground(AppTheme.fgMuted());
-                }
-                return comp;
-            }
         };
+
         AppTheme.styleTable(table);
 
+        // Status column pill renderer
+        table.getColumnModel().getColumn(4).setCellRenderer((tbl, val, isSelected, hasFocus, row, col) -> {
+            String statusStr = val != null ? val.toString() : "UNKNOWN";
+            JPanel pill = AppTheme.createStatusPill(statusStr);
+            if (isSelected) {
+                pill.setOpaque(true);
+                pill.setBackground(tbl.getSelectionBackground());
+            } else {
+                pill.setOpaque(false);
+            }
+            return pill;
+        });
+
         JPanel tbl = new JPanel(new BorderLayout());
-        tbl.setOpaque(false); tbl.setBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0));
+        tbl.setOpaque(false);
         tbl.add(AppTheme.scroll(table), BorderLayout.CENTER);
 
-        add(hdr, BorderLayout.NORTH); add(tbl, BorderLayout.CENTER);
+        add(hdr, BorderLayout.NORTH);
+        add(tbl, BorderLayout.CENTER);
     }
 
     public void refresh(Session s) {
@@ -92,8 +98,14 @@ public final class MyBorrowsPanel extends JPanel {
             String remain;
             if ("RETURNED".equals(r.getStatus().name())) remain = "-";
             else remain = r.isOverdue() ? r.overdueDays() + "d overdue" : r.remainingDays() + " days";
-            model.addRow(new Object[]{r.getId(), r.getBookId(), r.getIssueDate().toString(),
-                    r.getDueDate().toString(), status, remain});
+            model.addRow(new Object[]{
+                    r.getId(),
+                    r.getBookId(),
+                    r.getIssueDate().toString(),
+                    r.getDueDate().toString(),
+                    status,
+                    remain
+            });
         }
     }
 }
