@@ -9,8 +9,9 @@ import java.util.Map;
 
 /**
  * JSON-backed repository for {@link Notification} records.
+ * Uses secondary index for O(1) lookups by registrationNumber (studentId).
  */
-public final class NotificationRepository extends JsonRepository<Notification, String> {
+public final class NotificationRepository extends IndexedRepository<Notification, String> {
 
     private static final JsonMappable<Notification> MAPPER = new JsonMappable<>() {
         @Override
@@ -40,13 +41,24 @@ public final class NotificationRepository extends JsonRepository<Notification, S
 
     public NotificationRepository() {
         super(Constants.NOTIFICATIONS_FILE, MAPPER, Notification::getId);
+        registerSecondaryIndex("registrationNumber");
+    }
+
+    @Override
+    protected String secondaryKey(String indexName, Notification entity) {
+        return switch (indexName) {
+            case "registrationNumber" -> entity.getStudentId();
+            default                   -> null;
+        };
     }
 
     public List<Notification> findByStudent(String studentId) {
-        return findAll(n -> n.getStudentId().equals(studentId));
+        return findAllBySecondaryKey("registrationNumber", studentId);
     }
 
     public List<Notification> findUnreadByStudent(String studentId) {
-        return findAll(n -> n.getStudentId().equals(studentId) && !n.isRead());
+        return findAllBySecondaryKey("registrationNumber", studentId).stream()
+                .filter(n -> !n.isRead())
+                .toList();
     }
 }
