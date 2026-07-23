@@ -4,6 +4,7 @@ import com.library.config.ApplicationBootstrap;
 import com.library.enums.UserRole;
 import com.library.facade.LibraryFacade;
 import com.library.security.Session;
+import com.library.service.OverdueJob;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,11 +15,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Root application frame: sidebar navigation changes per role,
- * top tool-bar with theme toggle, and card-layout content area.
+ * Executive Root Frame — Sidebar navigation, top header toolbar with user identity,
+ * dynamic theme toggle, and card-layout content view.
  *
  * @author University Central Library — Software Engineering Division
- * @version 1.0.0
+ * @version 2.0.0
  */
 public final class MainFrame extends JFrame {
 
@@ -31,15 +32,28 @@ public final class MainFrame extends JFrame {
     private LoginPanel loginPanel;
 
     /* ── Panels (created lazily per role) ─────────────────────────── */
-    private DashboardPanel   dashboardPanel;
-    private BooksPanel       booksPanel;
-    private StudentsPanel    studentsPanel;
-    private BorrowPanel      borrowPanel;
-    private FinesPanel       finesPanel;
-    private SearchPanel      searchPanel;
-    private StudentHomePanel studentHomePanel;
-    private MyBorrowsPanel   myBorrowsPanel;
-    private MyFinesPanel     myFinesPanel;
+    private DashboardPanel            dashboardPanel;
+    private BooksPanel                booksPanel;
+    private StudentsPanel             studentsPanel;
+    private LibrarianManagementPanel  librarianPanel;
+    private BorrowPanel               borrowPanel;
+    private FinesPanel                finesPanel;
+    private ReservationsPanel         reservationsPanel;
+    private AnalyticsPanel            analyticsPanel;
+    private ReportsPanel              reportsPanel;
+    private AuditLogPanel             auditLogPanel;
+    private SettingsPanel             settingsPanel;
+    private BackupPanel               backupPanel;
+    private SearchPanel               searchPanel;
+    private StudentHomePanel          studentHomePanel;
+    private MyBorrowsPanel            myBorrowsPanel;
+    private MyFinesPanel              myFinesPanel;
+    private MyReservationsPanel       myReservationsPanel;
+    private NotificationsPanel        notificationsPanel;
+    private ProfilePanel              profilePanel;
+    private AcquisitionsPanel         acquisitionsPanel;
+    private ILLPanel                  illPanel;
+    private RoomReservationPanel      roomReservationPanel;
 
     private Session session;
     private final Map<String, NavItem> nav = new LinkedHashMap<>();
@@ -47,10 +61,18 @@ public final class MainFrame extends JFrame {
     private JPanel sidebar, topBar, main;
 
     public MainFrame() {
+        AppTheme.initLookAndFeel();
         facade = new LibraryFacade();
         ApplicationBootstrap.initialise(facade);
 
-        setTitle("Library Management System");
+        // Start background overdue-reminder job
+        OverdueJob overdueJob = new OverdueJob(
+                facade.borrowRepo(), facade.bookRepo(), facade.notificationPublisher());
+        overdueJob.start();
+        Runtime.getRuntime().addShutdownHook(
+                new Thread(overdueJob::stop, "overdue-job-shutdown"));
+
+        setTitle("Library Management System — Enterprise Edition");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setMinimumSize(new Dimension(1200, 750));
         setSize(1440, 860);
@@ -109,45 +131,79 @@ public final class MainFrame extends JFrame {
     }
 
     private void buildAdminUI() {
-        dashboardPanel  = new DashboardPanel(facade);
-        booksPanel      = new BooksPanel(facade);
-        studentsPanel   = new StudentsPanel(facade);
-        borrowPanel     = new BorrowPanel(facade);
-        finesPanel      = new FinesPanel(facade);
-        searchPanel     = new SearchPanel(facade);
+        dashboardPanel   = new DashboardPanel(facade);
+        booksPanel       = new BooksPanel(facade);
+        studentsPanel    = new StudentsPanel(facade);
+        librarianPanel   = new LibrarianManagementPanel(facade, session);
+        borrowPanel      = new BorrowPanel(facade);
+        finesPanel       = new FinesPanel(facade);
+        reservationsPanel = new ReservationsPanel(facade);
+        analyticsPanel   = new AnalyticsPanel(facade);
+        reportsPanel     = new ReportsPanel(facade);
+        auditLogPanel    = new AuditLogPanel(facade);
+        settingsPanel    = new SettingsPanel(facade);
+        backupPanel      = new BackupPanel(facade, session);
+        searchPanel      = new SearchPanel(facade);
 
-        content.add(dashboardPanel, "Dashboard");
-        content.add(booksPanel,     "Book Catalogue");
-        content.add(studentsPanel,  "Student Records");
-        content.add(borrowPanel,    "Circulation");
-        content.add(finesPanel,     "Fine Management");
-        content.add(searchPanel,    "Search");
+        content.add(dashboardPanel,   "Dashboard");
+        content.add(booksPanel,       "Books");
+        content.add(studentsPanel,    "Students");
+        content.add(librarianPanel,   "Librarian Management");
+        content.add(borrowPanel,      "Circulation");
+        content.add(finesPanel,       "Fines");
+        content.add(reservationsPanel,"Reservations");
+        content.add(analyticsPanel,   "Analytics");
+        content.add(reportsPanel,     "Reports");
+        content.add(auditLogPanel,    "Audit Logs");
+        content.add(settingsPanel,    "Settings");
+        content.add(backupPanel,      "Backup");
+        content.add(searchPanel,      "Search");
     }
 
     private void buildLibrarianUI() {
-        dashboardPanel  = new DashboardPanel(facade);
-        booksPanel      = new BooksPanel(facade);
-        borrowPanel     = new BorrowPanel(facade);
-        finesPanel      = new FinesPanel(facade);
-        searchPanel     = new SearchPanel(facade);
+        dashboardPanel    = new DashboardPanel(facade);
+        booksPanel        = new BooksPanel(facade);
+        studentsPanel     = new StudentsPanel(facade);
+        borrowPanel       = new BorrowPanel(facade);
+        reservationsPanel = new ReservationsPanel(facade);
+        finesPanel        = new FinesPanel(facade);
+        reportsPanel      = new ReportsPanel(facade);
+        analyticsPanel    = new AnalyticsPanel(facade);
+        searchPanel       = new SearchPanel(facade);
+        acquisitionsPanel = new AcquisitionsPanel(facade);
+        illPanel          = new ILLPanel(facade);
 
-        content.add(dashboardPanel, "Dashboard");
-        content.add(booksPanel,     "Book Catalogue");
-        content.add(borrowPanel,    "Circulation");
-        content.add(finesPanel,     "Fine Collection");
-        content.add(searchPanel,    "Search");
+        content.add(dashboardPanel,    "Dashboard");
+        content.add(booksPanel,        "Book Catalogue");
+        content.add(studentsPanel,     "Students");
+        content.add(borrowPanel,       "Circulation");
+        content.add(reservationsPanel, "Reservations");
+        content.add(finesPanel,        "Fine Collection");
+        content.add(reportsPanel,      "Reports");
+        content.add(analyticsPanel,    "Analytics");
+        content.add(searchPanel,       "Search");
+        content.add(acquisitionsPanel, "Acquisitions");
+        content.add(illPanel,          "ILL");
     }
 
     private void buildStudentUI() {
-        studentHomePanel = new StudentHomePanel(facade);
-        booksPanel       = new BooksPanel(facade);
-        myBorrowsPanel   = new MyBorrowsPanel(facade);
-        myFinesPanel     = new MyFinesPanel(facade);
+        studentHomePanel   = new StudentHomePanel(facade);
+        booksPanel         = new BooksPanel(facade);
+        myBorrowsPanel     = new MyBorrowsPanel(facade);
+        myReservationsPanel = new MyReservationsPanel(facade);
+        myFinesPanel       = new MyFinesPanel(facade);
+        notificationsPanel = new NotificationsPanel(facade);
+        profilePanel       = new ProfilePanel(facade);
+        roomReservationPanel = new RoomReservationPanel(facade);
 
-        content.add(studentHomePanel, "My Dashboard");
-        content.add(booksPanel,       "Browse Books");
-        content.add(myBorrowsPanel,   "My Borrows");
-        content.add(myFinesPanel,     "My Fines");
+        content.add(studentHomePanel,    "My Dashboard");
+        content.add(booksPanel,          "Browse Books");
+        content.add(myBorrowsPanel,      "My Borrows");
+        content.add(myReservationsPanel, "My Reservations");
+        content.add(myFinesPanel,        "My Fines");
+        content.add(notificationsPanel,  "Notifications");
+        content.add(profilePanel,        "My Profile");
+        content.add(roomReservationPanel,"Room Reservations");
     }
 
     /* ── Navigation ──────────────────────────────────────────────── */
@@ -162,15 +218,32 @@ public final class MainFrame extends JFrame {
 
     private void refreshPanel(String name) {
         switch (name) {
-            case "Dashboard"       -> { if (dashboardPanel  != null) dashboardPanel.refresh(session); }
-            case "Book Catalogue", "Browse Books" -> { if (booksPanel != null) booksPanel.refresh(session); }
-            case "Student Records" -> { if (studentsPanel   != null) studentsPanel.refresh(session); }
-            case "Circulation"     -> { if (borrowPanel     != null) borrowPanel.refresh(session); }
-            case "Fine Management", "Fine Collection" -> { if (finesPanel != null) finesPanel.refresh(session); }
-            case "Search"          -> { if (searchPanel     != null) searchPanel.refresh(session); }
-            case "My Dashboard"    -> { if (studentHomePanel!= null) studentHomePanel.refresh(session); }
-            case "My Borrows"      -> { if (myBorrowsPanel  != null) myBorrowsPanel.refresh(session); }
-            case "My Fines"        -> { if (myFinesPanel    != null) myFinesPanel.refresh(session); }
+            case "Dashboard"              -> { if (dashboardPanel      != null) dashboardPanel.refresh(session); }
+            case "Books"                  -> { if (booksPanel          != null) booksPanel.refresh(session); }
+            case "Browse Books"           -> { if (booksPanel          != null) booksPanel.refresh(session); }
+            case "Students"               -> { if (studentsPanel       != null) studentsPanel.refresh(session); }
+            case "Librarian Management"   -> { if (librarianPanel      != null) librarianPanel.refresh(session); }
+            case "Circulation"            -> { if (borrowPanel         != null) borrowPanel.refresh(session); }
+            case "Fines"                  -> { if (finesPanel          != null) finesPanel.refresh(session); }
+            case "Reservations"           -> { if (reservationsPanel   != null) reservationsPanel.refresh(session); }
+            case "Analytics"              -> { if (analyticsPanel      != null) analyticsPanel.refresh(session); }
+            case "Reports"                -> { if (reportsPanel        != null) reportsPanel.refresh(session); }
+            case "Audit Logs"             -> { if (auditLogPanel       != null) auditLogPanel.refresh(session); }
+            case "Settings"               -> { if (settingsPanel       != null) settingsPanel.refresh(session); }
+            case "Backup"                 -> { if (backupPanel         != null) backupPanel.refresh(session); }
+            case "Search"                 -> { if (searchPanel         != null) searchPanel.refresh(session); }
+            case "My Dashboard"           -> { if (studentHomePanel    != null) studentHomePanel.refresh(session); }
+            case "My Borrows"             -> { if (myBorrowsPanel      != null) myBorrowsPanel.refresh(session); }
+            case "My Fines"               -> { if (myFinesPanel        != null) myFinesPanel.refresh(session); }
+            case "My Reservations"        -> { if (myReservationsPanel != null) myReservationsPanel.refresh(session); }
+            case "Notifications"          -> { if (notificationsPanel  != null) notificationsPanel.refresh(session); }
+            case "My Profile"             -> { if (profilePanel        != null) profilePanel.refresh(session); }
+            case "Room Reservations"      -> { if (roomReservationPanel!= null) roomReservationPanel.refresh(session); }
+            // Librarian nav aliases
+            case "Book Catalogue"         -> { if (booksPanel          != null) booksPanel.refresh(session); }
+            case "Fine Collection", "Fine Management" -> { if (finesPanel != null) finesPanel.refresh(session); }
+            case "Acquisitions"           -> { if (acquisitionsPanel   != null) acquisitionsPanel.refresh(session); }
+            case "ILL"                    -> { if (illPanel            != null) illPanel.refresh(session); }
         }
     }
 
@@ -186,8 +259,8 @@ public final class MainFrame extends JFrame {
                 g.fillRect(0, getHeight() - 1, getWidth(), 1);
             }
         };
-        bar.setPreferredSize(new Dimension(0, 56));
-        bar.setBorder(BorderFactory.createEmptyBorder(0, 28, 0, 20));
+        bar.setPreferredSize(new Dimension(0, 52));
+        bar.setBorder(BorderFactory.createEmptyBorder(0, 24, 0, 20));
         bar.setOpaque(false);
 
         JLabel t = new JLabel("");
@@ -195,8 +268,8 @@ public final class MainFrame extends JFrame {
         t.setName("_title");
         bar.add(t, BorderLayout.WEST);
 
-        // Right: role badge + theme toggle
-        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+        // Right: role badge + user info + theme toggle
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 8));
         right.setOpaque(false);
 
         if (session != null) {
@@ -208,7 +281,7 @@ public final class MainFrame extends JFrame {
                         case LIBRARIAN -> AppTheme.ACCENT;
                         case STUDENT -> AppTheme.GREEN;
                     };
-                    g2.setColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 30));
+                    g2.setColor(AppTheme.isDark() ? new Color(c.getRed(), c.getGreen(), c.getBlue(), 40) : new Color(c.getRed(), c.getGreen(), c.getBlue(), 20));
                     g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
                     g2.setColor(c);
                     g2.setFont(AppTheme.SMALL_B);
@@ -218,11 +291,11 @@ public final class MainFrame extends JFrame {
                             (getHeight() + fm.getAscent() - fm.getDescent()) / 2);
                 }
             };
-            roleBadge.setPreferredSize(new Dimension(80, 28));
+            roleBadge.setPreferredSize(new Dimension(84, 26));
             right.add(roleBadge);
 
             JLabel userLabel = new JLabel(session.username());
-            userLabel.setFont(AppTheme.BODY); userLabel.setForeground(AppTheme.fgSecondary());
+            userLabel.setFont(AppTheme.BODY_B); userLabel.setForeground(AppTheme.fg());
             right.add(userLabel);
         }
 
@@ -245,31 +318,30 @@ public final class MainFrame extends JFrame {
         sb.setBackground(AppTheme.sidebarBg());
         sb.setPreferredSize(new Dimension(AppTheme.SIDEBAR_W, 0));
 
-        // logo
+        // logo header
         JPanel logo = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 AppTheme.aa(g);
                 g.setColor(AppTheme.sidebarBg());
                 g.fillRect(0, 0, getWidth(), getHeight());
-                g.setColor(new Color(255, 255, 255, 12));
+                g.setColor(new Color(255, 255, 255, 15));
                 g.fillRect(0, getHeight() - 1, getWidth(), 1);
             }
         };
-        logo.setPreferredSize(new Dimension(AppTheme.SIDEBAR_W, 56));
-        logo.setLayout(new FlowLayout(FlowLayout.LEFT, 18, 12));
+        logo.setPreferredSize(new Dimension(AppTheme.SIDEBAR_W, 52));
+        logo.setLayout(new FlowLayout(FlowLayout.LEFT, 16, 10));
 
         JLabel icon = new JLabel() {
             @Override protected void paintComponent(Graphics g) {
                 AppTheme.aa(g); var g2 = (Graphics2D) g;
-                var gp = new GradientPaint(0, 0, AppTheme.ACCENT, 32, 32, AppTheme.VIOLET);
-                g2.setPaint(gp);
-                g2.fillRoundRect(0, 0, 32, 32, 8, 8);
+                g2.setColor(AppTheme.ACCENT);
+                g2.fillRoundRect(0, 0, 30, 30, 8, 8);
                 g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                g2.drawString("LMS", 3, 21);
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 12));
+                g2.drawString("LMS", 3, 20);
             }
         };
-        icon.setPreferredSize(new Dimension(32, 32));
+        icon.setPreferredSize(new Dimension(30, 30));
 
         JLabel brandText = new JLabel("Library Manager");
         brandText.setFont(AppTheme.BODY_B); brandText.setForeground(Color.WHITE);
@@ -280,7 +352,7 @@ public final class MainFrame extends JFrame {
         JPanel items = new JPanel();
         items.setBackground(AppTheme.sidebarBg());
         items.setLayout(new BoxLayout(items, BoxLayout.Y_AXIS));
-        items.setBorder(BorderFactory.createEmptyBorder(12, 10, 10, 10));
+        items.setBorder(BorderFactory.createEmptyBorder(14, 10, 10, 10));
 
         // Section label
         String sectionTitle = switch (role) {
@@ -290,32 +362,46 @@ public final class MainFrame extends JFrame {
         };
         JLabel sec = new JLabel("  " + sectionTitle);
         sec.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        sec.setForeground(new Color(255, 255, 255, 80));
+        sec.setForeground(new Color(148, 163, 184, 160));
         sec.setAlignmentX(Component.LEFT_ALIGNMENT);
-        sec.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        sec.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
         items.add(sec); items.add(Box.createVerticalStrut(6));
 
         switch (role) {
             case ADMIN -> {
-                addNav(items, "Dashboard",      "\u25A3");
-                addNav(items, "Book Catalogue",  "\u25A1");
-                addNav(items, "Student Records", "\u25CB");
-                addNav(items, "Circulation",     "\u21C4");
-                addNav(items, "Fine Management", "\u25C7");
-                addNav(items, "Search",          "\u2315");
+                addNav(items, "Dashboard",             "\u25A3");
+                addNav(items, "Books",                 "\u25A1");
+                addNav(items, "Students",              "\u25CB");
+                addNav(items, "Librarian Management",  "\u25D0");
+                addNav(items, "Circulation",           "\u21C4");
+                addNav(items, "Fines",                 "\u25C7");
+                addNav(items, "Reservations",          "\u27BF");
+                addNav(items, "Analytics",             "\u25A3");
+                addNav(items, "Reports",               "\u25AC");
+                addNav(items, "Audit Logs",            "\u2394");
+                addNav(items, "Settings",              "\u2699");
+                addNav(items, "Backup",                "\u2601");
+                addNav(items, "Search",                "\u2315");
             }
             case LIBRARIAN -> {
                 addNav(items, "Dashboard",      "\u25A3");
-                addNav(items, "Book Catalogue",  "\u25A1");
-                addNav(items, "Circulation",     "\u21C4");
-                addNav(items, "Fine Collection", "\u25C7");
-                addNav(items, "Search",          "\u2315");
+                addNav(items, "Book Catalogue", "\u25A1");
+                addNav(items, "Students",       "\u25CB");
+                addNav(items, "Circulation",    "\u21C4");
+                addNav(items, "Reservations",   "\u27BF");
+                addNav(items, "Fine Collection","\u25C7");
+                addNav(items, "Reports",        "\u25AC");
+                addNav(items, "Analytics",      "\u25A3");
+                addNav(items, "Search",         "\u2315");
             }
             case STUDENT -> {
-                addNav(items, "My Dashboard",  "\u25A3");
-                addNav(items, "Browse Books",  "\u25A1");
-                addNav(items, "My Borrows",    "\u21C4");
-                addNav(items, "My Fines",      "\u25C7");
+                addNav(items, "My Dashboard",    "\u25A3");
+                addNav(items, "Browse Books",    "\u25A1");
+                addNav(items, "My Borrows",      "\u21C4");
+                addNav(items, "My Reservations", "\u27BF");
+                addNav(items, "My Fines",        "\u25C7");
+                addNav(items, "Notifications",   "\u25CB");
+                addNav(items, "My Profile",      "\u25D0");
             }
         }
         sb.add(items, BorderLayout.CENTER);
@@ -323,16 +409,16 @@ public final class MainFrame extends JFrame {
         // bottom — logout
         JPanel bottom = new JPanel();
         bottom.setBackground(AppTheme.sidebarBg());
-        bottom.setBorder(BorderFactory.createEmptyBorder(0, 10, 18, 10));
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 10, 16, 10));
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
 
         JPanel sep = new JPanel();
-        sep.setBackground(new Color(255, 255, 255, 12));
+        sep.setBackground(new Color(255, 255, 255, 15));
         sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
         bottom.add(sep); bottom.add(Box.createVerticalStrut(10));
 
         NavItem logout = new NavItem("Sign Out", "\u2192", false);
-        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        logout.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         logout.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { logout(); }
         });
@@ -343,7 +429,7 @@ public final class MainFrame extends JFrame {
 
     private void addNav(JPanel p, String name, String icon) {
         NavItem item = new NavItem(name, icon, true);
-        item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        item.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
         item.addMouseListener(new MouseAdapter() {
             @Override public void mouseClicked(MouseEvent e) { go(name); }
         });
@@ -378,7 +464,7 @@ public final class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> { revalidate(); repaint(); });
     }
 
-    /* ── Sidebar nav item ────────────────────────────────────────── */
+    /* ── Sidebar Nav Item ────────────────────────────────────────── */
 
     class NavItem extends JPanel {
         private final String name, icon;
@@ -389,7 +475,7 @@ public final class MainFrame extends JFrame {
             this.name = name; this.icon = icon; this.tracked = tracked;
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(AppTheme.SIDEBAR_W - 20, 42));
+            setPreferredSize(new Dimension(AppTheme.SIDEBAR_W - 20, 38));
             addMouseListener(new MouseAdapter() {
                 @Override public void mouseEntered(MouseEvent e) { hover = true;  repaint(); }
                 @Override public void mouseExited(MouseEvent e)  { hover = false; repaint(); }
@@ -401,25 +487,25 @@ public final class MainFrame extends JFrame {
             boolean act = tracked && name.equals(active);
             if (act) {
                 g2.setColor(AppTheme.sidebarActive());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
                 g2.setColor(AppTheme.ACCENT);
-                g2.fill(new RoundRectangle2D.Float(0, 6, 3, getHeight() - 12, 3, 3));
+                g2.fill(new RoundRectangle2D.Float(0, 5, 3, getHeight() - 10, 3, 3));
             } else if (hover) {
                 g2.setColor(AppTheme.sidebarHover());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 10, 10));
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(), 8, 8));
             }
-            Color col = act ? AppTheme.ACCENT : hover ? Color.WHITE : new Color(0x8B, 0x95, 0xA5);
+            Color col = act ? AppTheme.ACCENT : hover ? Color.WHITE : new Color(0x94, 0xA3, 0xB8);
             g2.setFont(AppTheme.SIDEBAR); g2.setColor(col);
-            g2.drawString(icon, 16, 27);
+            g2.drawString(icon, 14, 24);
             g2.setColor(act ? Color.WHITE : col);
-            g2.drawString(name, 42, 27);
+            g2.drawString(name, 38, 24);
         }
     }
 
     /* ── Entry point ─────────────────────────────────────────────── */
 
     public static void launch() {
-        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } catch (Exception ignored) {}
+        AppTheme.initLookAndFeel();
         SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
     }
 }
