@@ -9,11 +9,11 @@ import java.awt.event.ActionEvent;
 import java.awt.geom.RoundRectangle2D;
 
 /**
- * Authentication screen with role selector, branded identity, and
- * smooth gradient background. Supports light / dark theme toggle.
+ * Executive Authentication Screen — Clean enterprise layout, role switcher,
+ * password toggle, and clear inline validation banners.
  *
  * @author University Central Library — Software Engineering Division
- * @version 1.0.0
+ * @version 2.0.0
  */
 public final class LoginPanel extends JPanel {
 
@@ -22,7 +22,9 @@ public final class LoginPanel extends JPanel {
     private JTextField userField;
     private JPasswordField passField;
     private JComboBox<String> roleBox;
+    private JPanel errPanel;
     private JLabel errLabel;
+    private JToggleButton showPassBtn;
     private String token;
 
     public LoginPanel(LibraryFacade facade, Runnable onSuccess) {
@@ -44,58 +46,48 @@ public final class LoginPanel extends JPanel {
                 AppTheme.aa(g);
                 var g2 = (Graphics2D) g;
                 int w = getWidth(), h = getHeight();
-                // soft shadow
-                g2.setColor(new Color(0, 0, 0, AppTheme.isDark() ? 50 : 18));
-                g2.fill(new RoundRectangle2D.Float(6, 6, w - 6, h - 6, 24, 24));
-                // card body
+                // card background
                 g2.setColor(AppTheme.bgCard());
-                g2.fill(new RoundRectangle2D.Float(0, 0, w - 6, h - 6, 24, 24));
-                // light-mode border
-                if (!AppTheme.isDark()) {
-                    g2.setColor(AppTheme.border());
-                    g2.setStroke(new BasicStroke(1f));
-                    g2.draw(new RoundRectangle2D.Float(.5f, .5f, w - 7, h - 7, 24, 24));
-                }
-                // top accent gradient
-                var gp = new GradientPaint(0, 0, AppTheme.ACCENT, w, 0, AppTheme.VIOLET);
-                g2.setPaint(gp);
-                g2.fill(new RoundRectangle2D.Float(0, 0, w - 6, 4, 4, 4));
+                g2.fill(new RoundRectangle2D.Float(0, 0, w, h, AppTheme.CARD_R + 4, AppTheme.CARD_R + 4));
+                // subtle border
+                g2.setColor(AppTheme.border());
+                g2.setStroke(new BasicStroke(1f));
+                g2.draw(new RoundRectangle2D.Float(.5f, .5f, w - 1, h - 1, AppTheme.CARD_R + 4, AppTheme.CARD_R + 4));
             }
         };
         card.setOpaque(false);
-        card.setPreferredSize(new Dimension(440, 620));
+        card.setPreferredSize(new Dimension(420, 560));
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createEmptyBorder(32, 44, 36, 44));
+        card.setBorder(BorderFactory.createEmptyBorder(28, 36, 28, 36));
 
-        // theme toggle — top right
+        // top row: theme toggle button
         JPanel topRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         topRow.setOpaque(false);
         topRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+        topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         topRow.add(AppTheme.themeBtn());
 
-        // logo circle
+        // branding logo badge
         JLabel logo = new JLabel() {
             @Override protected void paintComponent(Graphics g) {
                 AppTheme.aa(g);
                 var g2 = (Graphics2D) g;
-                var gp = new GradientPaint(0, 0, AppTheme.ACCENT, 64, 64, AppTheme.VIOLET);
-                g2.setPaint(gp);
-                g2.fillOval(0, 0, 64, 64);
+                g2.setColor(AppTheme.ACCENT);
+                g2.fill(new RoundRectangle2D.Float(0, 0, 52, 52, 12, 12));
                 g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 22));
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 18));
                 var fm = g2.getFontMetrics();
                 String s = "LMS";
-                g2.drawString(s, (64 - fm.stringWidth(s)) / 2, (64 + fm.getAscent() - fm.getDescent()) / 2);
+                g2.drawString(s, (52 - fm.stringWidth(s)) / 2, (52 + fm.getAscent() - fm.getDescent()) / 2);
             }
         };
-        logo.setPreferredSize(new Dimension(64, 64));
-        logo.setMaximumSize(new Dimension(64, 64));
+        logo.setPreferredSize(new Dimension(52, 52));
+        logo.setMaximumSize(new Dimension(52, 52));
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel title = lbl("University Central Library", AppTheme.LOGO, AppTheme.fg());
+        JLabel title = lbl("University Central Library", AppTheme.H1, AppTheme.fg());
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        JLabel sub = lbl("Library Management System", AppTheme.SMALL, AppTheme.fgSecondary());
+        JLabel sub = lbl("Enterprise Library Portal", AppTheme.SMALL, AppTheme.fgSecondary());
         sub.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // role selector
@@ -103,51 +95,61 @@ public final class LoginPanel extends JPanel {
         roleBox = AppTheme.comboBox("Administrator", "Librarian", "Student");
         roleBox.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // username
+        // username input
         JLabel userLbl = fieldLabel("Username");
         userField = AppTheme.textField(20);
-        userField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        userField.putClientProperty("JTextField.placeholderText", "Enter your username");
+        userField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         userField.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // password
+        // password input with show/hide toggle
         JLabel passLbl = fieldLabel("Password");
         passField = AppTheme.passwordField(20);
-        passField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        passField.putClientProperty("JTextField.placeholderText", "Enter your password");
+        passField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         passField.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // error
-        errLabel = new JLabel(" ");
+        // error banner panel
+        errPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        errPanel.setBackground(AppTheme.isDark() ? new Color(0x99, 0x1B, 0x1B, 40) : new Color(0xFE, 0xE2, 0xE2));
+        errPanel.setBorder(BorderFactory.createLineBorder(AppTheme.isDark() ? new Color(0x99, 0x1B, 0x1B) : new Color(0xFC, 0xA5, 0xA5)));
+        errPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        errPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        errPanel.setVisible(false);
+
+        errLabel = new JLabel("");
         errLabel.setFont(AppTheme.SMALL);
-        errLabel.setForeground(AppTheme.RED);
-        errLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        errLabel.setForeground(AppTheme.isDark() ? new Color(0xF8, 0x71, 0x71) : new Color(0x99, 0x1B, 0x1B));
+        errPanel.add(errLabel);
 
         // sign-in button
         JButton signIn = AppTheme.primaryBtn("Sign In");
-        signIn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
+        signIn.setPreferredSize(new Dimension(348, 42));
+        signIn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         signIn.setAlignmentX(Component.LEFT_ALIGNMENT);
         signIn.addActionListener(this::login);
         passField.addActionListener(this::login);
         userField.addActionListener(e -> passField.requestFocusInWindow());
 
-        // version
-        JLabel ver = lbl("Version 1.0.0", AppTheme.SMALL, AppTheme.fgMuted());
+        // version footer
+        JLabel ver = lbl("Version 2.0.0 • Enterprise Edition", AppTheme.SMALL, AppTheme.fgMuted());
         ver.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(topRow);
         card.add(logo);
-        card.add(Box.createVerticalStrut(12));
+        card.add(Box.createVerticalStrut(10));
         card.add(title);
         card.add(Box.createVerticalStrut(4));
         card.add(sub);
-        card.add(Box.createVerticalStrut(28));
+        card.add(Box.createVerticalStrut(22));
         card.add(roleLbl); card.add(Box.createVerticalStrut(6)); card.add(roleBox);
-        card.add(Box.createVerticalStrut(14));
+        card.add(Box.createVerticalStrut(12));
         card.add(userLbl); card.add(Box.createVerticalStrut(6)); card.add(userField);
-        card.add(Box.createVerticalStrut(14));
+        card.add(Box.createVerticalStrut(12));
         card.add(passLbl); card.add(Box.createVerticalStrut(6)); card.add(passField);
-        card.add(Box.createVerticalStrut(4));
-        card.add(errLabel);
-        card.add(Box.createVerticalStrut(18));
+        card.add(Box.createVerticalStrut(8));
+        card.add(errPanel);
+        card.add(Box.createVerticalStrut(16));
         card.add(signIn);
         card.add(Box.createVerticalStrut(14));
         card.add(ver);
@@ -172,15 +174,24 @@ public final class LoginPanel extends JPanel {
     private void login(ActionEvent e) {
         String user = userField.getText().trim();
         String pass = new String(passField.getPassword());
-        if (user.isEmpty() || pass.isEmpty()) { errLabel.setText("Please enter both username and password."); return; }
+        if (user.isEmpty() || pass.isEmpty()) {
+            showError("Please enter both username and password.");
+            return;
+        }
         try {
             token = facade.auth().login(user, pass);
-            errLabel.setText(" ");
+            errPanel.setVisible(false);
             onSuccess.run();
         } catch (Exception ex) {
-            errLabel.setText("Invalid credentials. Please try again.");
+            showError("Invalid credentials. Please verify username and password.");
             passField.setText(""); passField.requestFocusInWindow();
         }
+    }
+
+    private void showError(String msg) {
+        errLabel.setText(msg);
+        errPanel.setVisible(true);
+        revalidate(); repaint();
     }
 
     /* ── Public API ──────────────────────────────────────────────── */
@@ -190,7 +201,7 @@ public final class LoginPanel extends JPanel {
     public String  getRole()     { return (String) roleBox.getSelectedItem(); }
 
     public void reset() {
-        userField.setText(""); passField.setText(""); errLabel.setText(" ");
+        userField.setText(""); passField.setText(""); errPanel.setVisible(false);
         userField.requestFocusInWindow(); token = null;
     }
 
