@@ -79,17 +79,16 @@ public final class LibrarianController extends BaseController {
     }
 
     public List<Fine> viewOwnFines(Session session, String registrationNumber) {
-        require(session, Permissions.FINE_VIEW);
-        return fines.findByStudent(registrationNumber);
+        return fines.findByStudent(session, registrationNumber);
     }
 
     public List<Fine> viewOwnPendingFines(Session session, String registrationNumber) {
-        require(session, Permissions.FINE_VIEW);
+        require(session, Permissions.FINE_VIEW_OWN);
         return fines.findPendingByStudent(registrationNumber);
     }
 
     public List<Fine> viewAllPendingFines(Session session) {
-        require(session, Permissions.FINE_VIEW);
+        require(session, Permissions.FINE_VIEW_ALL);
         return fines.findAllPending();
     }
 }
