@@ -82,4 +82,34 @@ public final class Constants {
     public static final String CONFIG_FILE = SETTINGS_FILE;
     public static final String AUDIT_LOG_FILE = DATA_DIR + "/audit_logs.json";
 
+    // ---- New JSON data file paths (enterprise upgrade) ----
+    public static final String MEMBERSHIP_TIERS_FILE = DATA_DIR + "/membership_tiers.json";
+    public static final String LOST_BOOKS_FILE = DATA_DIR + "/lost_books.json";
+    public static final String READING_LISTS_FILE = DATA_DIR + "/reading_lists.json";
+    public static final String ACQUISITIONS_FILE = DATA_DIR + "/acquisitions.json";
+    public static final String BRANCHES_FILE = DATA_DIR + "/branches.json";
+    public static final String STUDY_ROOMS_FILE = DATA_DIR + "/study_rooms.json";
+    public static final String ROOM_RESERVATIONS_FILE = DATA_DIR + "/room_reservations.json";
+    public static final String ILL_RECORDS_FILE = DATA_DIR + "/inter_library_loans.json";
+
+    // ---- SQLite persistence ----
+    public static final String SQLITE_DB_FILE = DATA_DIR + "/library.db";
+
+    // ---- Export directories ----
+    public static final String CARDS_EXPORT_DIR = EXPORT_DIR + "/cards";
+
+    // ---- Account-lockout thresholds ----
+    /** Maximum consecutive failed login attempts before the account is temporarily locked. */
+    public static final int MAX_LOGIN_ATTEMPTS = 5;
+
+    /** Time window in minutes in which MAX_LOGIN_ATTEMPTS failures trigger a lockout. */
+    public static final int LOCKOUT_WINDOW_MINUTES = 15;
+
+    /** Duration in minutes that an account remains locked after exceeding MAX_LOGIN_ATTEMPTS. */
+    public static final int LOCKOUT_DURATION_MINUTES = 15;
+
+    // ---- Background job intervals ----
+    /** How often the overdue-reminder job runs, in hours. */
+    public static final int OVERDUE_JOB_INTERVAL_HOURS = 24;
+
 }
