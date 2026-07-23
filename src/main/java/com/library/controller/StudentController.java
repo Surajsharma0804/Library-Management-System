@@ -123,7 +123,7 @@ public final class StudentController extends BaseController {
     public List<com.library.model.Fine> myFines(Session session) {
         Student s = getProfile(session);
         if (s == null) return List.of();
-        return facade.fines().findByStudent(s.getRegistrationNumber());
+        return facade.fines().findByStudent(session, s.getRegistrationNumber());
     }
 
     private Student findStudent(String studentId) {
