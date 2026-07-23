@@ -1,7 +1,10 @@
 package com.library.gui;
 
+import com.library.enums.ReservationStatus;
 import com.library.facade.LibraryFacade;
+import com.library.model.Book;
 import com.library.model.BorrowRecord;
+import com.library.model.Notification;
 import com.library.model.Student;
 import com.library.security.Session;
 
@@ -11,133 +14,261 @@ import java.awt.geom.RoundRectangle2D;
 import java.util.List;
 
 /**
- * Student home dashboard — personal overview of borrows, fines,
- * remaining quota, and membership status.
+ * Executive Student Dashboard — 5 metric tiles (Active Borrows, Overdue,
+ * Pending Reservations, Outstanding Fine, Unread Notifications) plus a
+ * personalised recommendations section.
  *
  * @author University Central Library — Software Engineering Division
+ * @version 2.0.0
  */
 public final class StudentHomePanel extends JPanel {
 
     private final LibraryFacade facade;
-    private JPanel metricsRow, infoRow;
+    private JPanel metricsRow;
+    private JPanel centerPanel;
 
     public StudentHomePanel(LibraryFacade facade) {
         this.facade = facade;
         setBackground(AppTheme.bg());
-        setLayout(new BorderLayout());
-        setBorder(BorderFactory.createEmptyBorder(32, 32, 32, 32));
+        setLayout(new BorderLayout(0, 16));
+        setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
         build();
     }
 
     private void build() {
         removeAll();
+
         JPanel hdr = new JPanel();
         hdr.setOpaque(false);
         hdr.setLayout(new BoxLayout(hdr, BoxLayout.Y_AXIS));
-        JLabel t = new JLabel("Welcome Back");
+
+        JLabel t = new JLabel("Student Portal");
         t.setFont(AppTheme.H1); t.setForeground(AppTheme.fg());
-        JLabel s = new JLabel("Your library account overview");
+
+        JLabel s = new JLabel("Personal library account overview, active loans, and notifications");
         s.setFont(AppTheme.SMALL); s.setForeground(AppTheme.fgSecondary());
+
         hdr.add(t); hdr.add(Box.createVerticalStrut(4)); hdr.add(s);
         add(hdr, BorderLayout.NORTH);
 
-        metricsRow = new JPanel(new GridLayout(1, 4, 16, 0));
+        // 5 metric tiles (GridLayout 1×5)
+        metricsRow = new JPanel(new GridLayout(1, 5, 14, 0));
         metricsRow.setOpaque(false);
-        metricsRow.setBorder(BorderFactory.createEmptyBorder(24, 0, 0, 0));
 
-        infoRow = new JPanel(new GridLayout(1, 2, 16, 0));
-        infoRow.setOpaque(false);
-        infoRow.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+        // Placeholder loading tiles
+        for (int i = 0; i < 5; i++) {
+            metricsRow.add(AppTheme.metricCard("Loading…", "—", AppTheme.ACCENT));
+        }
 
-        JPanel body = new JPanel(new BorderLayout());
+        // Recommendations panel
+        JPanel recoCard = createCard("Recommended for You");
+        centerPanel = recoCard;
+
+        JPanel body = new JPanel(new BorderLayout(0, 16));
         body.setOpaque(false);
         body.add(metricsRow, BorderLayout.NORTH);
-        body.add(infoRow, BorderLayout.CENTER);
+        body.add(centerPanel, BorderLayout.CENTER);
         add(body, BorderLayout.CENTER);
     }
 
     public void refresh(Session session) {
         setBackground(AppTheme.bg());
-        metricsRow.removeAll(); infoRow.removeAll();
 
-        Student student = facade.userRepo().findStudentByUsername(session.username());
-        if (student == null) {
-            metricsRow.add(AppTheme.metricCard("Error", "N/A", AppTheme.RED));
-            revalidate(); repaint();
-            return;
+        // Clear metrics with loading placeholders
+        metricsRow.removeAll();
+        for (int i = 0; i < 5; i++) {
+            JPanel placeholder = AppTheme.metricCard("Loading…", "—", AppTheme.ACCENT);
+            metricsRow.add(placeholder);
         }
+        metricsRow.revalidate();
 
-        List<BorrowRecord> borrows = facade.borrowRepo().findActiveByRegistrationNumber(student.getRegistrationNumber());
-        long overdue = borrows.stream().filter(BorrowRecord::isOverdue).count();
-        long fineBalance = student.getFineBalancePaise();
+        new SwingWorker<String[], Void>() {
+            @Override
+            protected String[] doInBackground() {
+                String[] vals = new String[5];
+                try {
+                    Student student = facade.userRepo().findStudentByUsername(session.username());
+                    if (student == null) {
+                        for (int i = 0; i < 5; i++) vals[i] = "Error";
+                        return vals;
+                    }
+                    String regNo = student.getRegistrationNumber();
 
-        metricsRow.add(AppTheme.metricCard("Active Borrows",  String.valueOf(borrows.size()),       AppTheme.ACCENT));
-        metricsRow.add(AppTheme.metricCard("Overdue Books",   String.valueOf(overdue),              AppTheme.RED));
-        metricsRow.add(AppTheme.metricCard("Remaining Quota", String.valueOf(student.remainingBorrowSlots()), AppTheme.GREEN));
-        metricsRow.add(AppTheme.metricCard("Fine Balance",    String.format("\u20B9%.0f", fineBalance / 100.0), AppTheme.AMBER));
+                    // 1. Active borrows
+                    try {
+                        List<BorrowRecord> borrows = facade.borrowRepo()
+                                .findActiveByRegistrationNumber(regNo);
+                        vals[0] = String.valueOf(borrows.size());
+                    } catch (Exception e) { vals[0] = "Error"; }
 
-        // info cards
-        infoRow.add(detailCard("Account Information", new String[][]{
-                {"Name", student.getFirstName() + " " + student.getLastName()},
-                {"Registration No.", student.getRegistrationNumber()},
-                {"Department", student.getDepartment() != null ? student.getDepartment() : "-"},
-                {"Course", student.getCourse() != null ? student.getCourse() : "-"},
-                {"Semester", String.valueOf(student.getSemester())},
-                {"Status", student.getMembershipStatus().name()},
-        }));
+                    // 2. Overdue borrows
+                    try {
+                        List<BorrowRecord> borrows = facade.borrowRepo()
+                                .findActiveByRegistrationNumber(regNo);
+                        long overdue = borrows.stream().filter(BorrowRecord::isOverdue).count();
+                        vals[1] = String.valueOf(overdue);
+                    } catch (Exception e) { vals[1] = "Error"; }
 
-        infoRow.add(detailCard("Current Borrows", borrows.isEmpty()
-                ? new String[][]{{"", "No active borrows"}}
-                : borrows.stream().map(b -> new String[]{
-                    b.getBookId(), "Due: " + b.getDueDate() + (b.isOverdue() ? "  \u26A0 OVERDUE" : "")
-                }).toArray(String[][]::new)
-        ));
+                    // 3. Pending reservations
+                    try {
+                        long pending = facade.reservations().findByStudent(regNo).stream()
+                                .filter(r -> r.getStatus() == ReservationStatus.PENDING)
+                                .count();
+                        vals[2] = String.valueOf(pending);
+                    } catch (Exception e) { vals[2] = "Error"; }
 
-        revalidate(); repaint();
+                    // 4. Outstanding fine
+                    try {
+                        Student fresh = facade.userRepo().findStudentByUsername(session.username());
+                        vals[3] = fresh != null
+                                ? String.format("₹%.2f", fresh.getFineBalancePaise() / 100.0)
+                                : "₹0.00";
+                    } catch (Exception e) { vals[3] = "Error"; }
+
+                    // 5. Unread notifications
+                    try {
+                        long unread = facade.notificationRepo()
+                                .findByStudent(regNo).stream()
+                                .filter(n -> !n.isRead()).count();
+                        vals[4] = String.valueOf(unread);
+                    } catch (Exception e) { vals[4] = "Error"; }
+
+                } catch (Exception e) {
+                    for (int i = 0; i < 5; i++) if (vals[i] == null) vals[i] = "Error";
+                }
+                return vals;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String[] vals = get();
+                    metricsRow.removeAll();
+                    Color c0 = "Error".equals(vals[0]) ? AppTheme.RED : AppTheme.ACCENT;
+                    Color c1 = "Error".equals(vals[1]) || !"0".equals(vals[1]) ? AppTheme.RED : AppTheme.GREEN;
+                    Color c2 = "Error".equals(vals[2]) ? AppTheme.RED : AppTheme.AMBER;
+                    Color c3 = "Error".equals(vals[3]) ? AppTheme.RED : AppTheme.AMBER;
+                    Color c4 = "Error".equals(vals[4]) ? AppTheme.RED : AppTheme.ACCENT;
+
+                    metricsRow.add(AppTheme.metricCard("Active Borrows",        vals[0], "Books currently on loan",    c0));
+                    metricsRow.add(AppTheme.metricCard("Overdue Borrows",       vals[1], "Action required",            c1));
+                    metricsRow.add(AppTheme.metricCard("Pending Reservations",  vals[2], "In queue",                   c2));
+                    metricsRow.add(AppTheme.metricCard("Outstanding Fine",      vals[3], "Balance due",                c3));
+                    metricsRow.add(AppTheme.metricCard("Unread Notifications",  vals[4], "New messages",               c4));
+                    metricsRow.revalidate();
+                } catch (Exception ignored) {}
+            }
+        }.execute();
+
+        // Recommendations (separate SwingWorker)
+        new SwingWorker<List<Book>, Void>() {
+            String regNo;
+
+            @Override
+            protected List<Book> doInBackground() {
+                try {
+                    Student student = facade.userRepo().findStudentByUsername(session.username());
+                    if (student == null) return List.of();
+                    regNo = student.getRegistrationNumber();
+                    return facade.recommendations().recommend(regNo).stream().limit(5).toList();
+                } catch (Exception e) {
+                    return List.of();
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<Book> recs = get();
+                    // Replace center panel with recommendations card
+                    Container parent = centerPanel.getParent();
+                    if (parent == null) return;
+                    parent.remove(centerPanel);
+
+                    JPanel recoCard = buildRecommendationsCard(recs);
+                    centerPanel = recoCard;
+                    parent.add(centerPanel, BorderLayout.CENTER);
+                    parent.revalidate();
+                    parent.repaint();
+                } catch (Exception ignored) {}
+            }
+        }.execute();
     }
 
-    private JPanel detailCard(String title, String[][] rows) {
+    private JPanel buildRecommendationsCard(List<Book> books) {
         JPanel card = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
-                AppTheme.aa(g); var g2 = (Graphics2D) g;
-                g2.setColor(new Color(0, 0, 0, AppTheme.isDark() ? 25 : 8));
-                g2.fill(new RoundRectangle2D.Float(2, 2, getWidth()-2, getHeight()-2, 14, 14));
+                AppTheme.aa(g); Graphics2D g2 = (Graphics2D) g;
                 g2.setColor(AppTheme.bgCard());
-                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth()-2, getHeight()-2, 14, 14));
-                if (!AppTheme.isDark()) {
-                    g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
-                    g2.draw(new RoundRectangle2D.Float(.5f, .5f, getWidth()-3, getHeight()-3, 14, 14));
-                }
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(),
+                        AppTheme.CARD_R, AppTheme.CARD_R));
+                g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
+                g2.draw(new RoundRectangle2D.Float(.5f, .5f, getWidth() - 1, getHeight() - 1,
+                        AppTheme.CARD_R, AppTheme.CARD_R));
             }
         };
         card.setOpaque(false);
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setLayout(new BorderLayout(0, 10));
         card.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
 
-        JLabel titleLbl = new JLabel(title);
+        JLabel titleLbl = new JLabel("Recommended for You");
         titleLbl.setFont(AppTheme.H3); titleLbl.setForeground(AppTheme.fg());
-        titleLbl.setAlignmentX(Component.LEFT_ALIGNMENT);
-        card.add(titleLbl);
-        card.add(Box.createVerticalStrut(14));
+        card.add(titleLbl, BorderLayout.NORTH);
 
-        for (String[] row : rows) {
-            JPanel r = new JPanel(new BorderLayout());
-            r.setOpaque(false);
-            r.setAlignmentX(Component.LEFT_ALIGNMENT);
-            r.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-
-            JLabel k = new JLabel(row[0]);
-            k.setFont(AppTheme.SMALL); k.setForeground(AppTheme.fgMuted());
-            JLabel v = new JLabel(row[1]);
-            v.setFont(AppTheme.BODY); v.setForeground(AppTheme.fg());
-            if (row[1].contains("OVERDUE")) v.setForeground(AppTheme.RED);
-            if ("ACTIVE".equals(row[1])) v.setForeground(AppTheme.GREEN);
-
-            r.add(k, BorderLayout.WEST);
-            r.add(v, BorderLayout.EAST);
-            card.add(r);
-            card.add(Box.createVerticalStrut(4));
+        if (books.isEmpty()) {
+            JLabel none = new JLabel("No recommendations available yet.");
+            none.setFont(AppTheme.BODY);
+            none.setForeground(AppTheme.fgMuted());
+            card.add(none, BorderLayout.CENTER);
+            return card;
         }
+
+        DefaultListModel<String> listModel = new DefaultListModel<>();
+        for (Book b : books) {
+            listModel.addElement(b.getTitle() + "  —  " + b.getAuthor()
+                    + (b.getCategory() != null ? "  [" + b.getCategory() + "]" : ""));
+        }
+
+        JList<String> list = new JList<>(listModel);
+        list.setFont(AppTheme.BODY);
+        list.setForeground(AppTheme.fg());
+        list.setBackground(AppTheme.bgCard());
+        list.setSelectionBackground(new Color(
+                AppTheme.ACCENT.getRed(), AppTheme.ACCENT.getGreen(), AppTheme.ACCENT.getBlue(), 40));
+        list.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
+
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        card.add(scroll, BorderLayout.CENTER);
+
+        return card;
+    }
+
+    private JPanel createCard(String titleText) {
+        JPanel card = new JPanel() {
+            @Override protected void paintComponent(Graphics g) {
+                AppTheme.aa(g); Graphics2D g2 = (Graphics2D) g;
+                g2.setColor(AppTheme.bgCard());
+                g2.fill(new RoundRectangle2D.Float(0, 0, getWidth(), getHeight(),
+                        AppTheme.CARD_R, AppTheme.CARD_R));
+                g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
+                g2.draw(new RoundRectangle2D.Float(.5f, .5f, getWidth() - 1, getHeight() - 1,
+                        AppTheme.CARD_R, AppTheme.CARD_R));
+            }
+        };
+        card.setOpaque(false);
+        card.setLayout(new BorderLayout(0, 10));
+        card.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
+
+        JLabel titleLbl = new JLabel(titleText);
+        titleLbl.setFont(AppTheme.H3); titleLbl.setForeground(AppTheme.fg());
+        card.add(titleLbl, BorderLayout.NORTH);
+
+        JLabel loading = new JLabel("Loading recommendations…");
+        loading.setFont(AppTheme.BODY); loading.setForeground(AppTheme.fgMuted());
+        card.add(loading, BorderLayout.CENTER);
 
         return card;
     }
