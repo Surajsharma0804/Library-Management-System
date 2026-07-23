@@ -50,6 +50,10 @@ public class Notification {
         this.read = true;
     }
 
+    public void setRead(boolean read) {
+        this.read = read;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
