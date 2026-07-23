@@ -122,6 +122,28 @@ public final class ReservationService {
         return ready.size();
     }
 
+    /** Marks a PENDING reservation as READY (available for pickup). */
+    public Reservation markReady(Session session, String reservationId) {
+        Reservation reservation = repo.findById(reservationId)
+                .orElseThrow(() -> new ReservationException("Reservation not found: " + reservationId));
+        if (reservation.getStatus() != ReservationStatus.PENDING) {
+            throw new ReservationException("Reservation is not in PENDING status: " + reservation.getStatus());
+        }
+        LibraryConfig config = configRepo.get();
+        reservation.setStatus(ReservationStatus.READY);
+        reservation.setExpiryDate(DateUtils.today().plusDays(config.getReservationHoldDays()));
+        repo.save(reservation);
+        auditService.record(session, "RESERVATION_MARK_READY", "Reservation", reservationId,
+                "Marked reservation ready for " + reservation.getRegistrationNumber());
+        notifications.publish(new NotificationEvent(
+                reservation.getRegistrationNumber(), NotificationType.RESERVATION_READY,
+                "Book Ready for Pickup",
+                "Your reserved book is ready. Please collect within "
+                        + config.getReservationHoldDays() + " days.",
+                DateUtils.now()));
+        return reservation;
+    }
+
     private void reindexQueue(String bookId) {
         List<Reservation> pending = repo.findPendingByBookId(bookId);
         pending.sort(java.util.Comparator.comparing(Reservation::getReservationDate));
