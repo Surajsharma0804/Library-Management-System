@@ -2,6 +2,7 @@ package com.library.service;
 
 import com.library.service.AuditService;
 import com.library.enums.BorrowStatus;
+import com.library.model.LostBookRecord;
 import com.library.enums.NotificationType;
 import com.library.enums.ReservationStatus;
 import com.library.exception.BookNotFoundException;
@@ -41,12 +42,15 @@ public final class BorrowService {
     private final AuditService auditService;
     private final NotificationPublisher notifications;
     private final FineService fineService;
+    private final MembershipTierService membershipTierService;
+    private final LostBookService lostBookService;
 
     public BorrowService(BookRepository bookRepo, UserRepository studentRepo,
                          BorrowRepository borrowRepo, ReservationRepository reservationRepo,
                          LibraryConfigRepository configRepo, EntityFactory factory,
                          AuditService auditService, NotificationPublisher notifications,
-                         FineService fineService) {
+                         FineService fineService, MembershipTierService membershipTierService,
+                         LostBookService lostBookService) {
         this.bookRepo = bookRepo;
         this.studentRepo = studentRepo;
         this.borrowRepo = borrowRepo;
@@ -56,6 +60,8 @@ public final class BorrowService {
         this.auditService = auditService;
         this.notifications = notifications;
         this.fineService = fineService;
+        this.membershipTierService = membershipTierService;
+        this.lostBookService = lostBookService;
     }
 
     public BorrowRecord issueBook(Session session, String bookId, String registrationNumber) {
@@ -66,6 +72,13 @@ public final class BorrowService {
             throw new InvalidRegistrationException("No student with registration number: " + registrationNumber);
         }
         LibraryConfig config = configRepo.get();
+        
+        // Check membership tier borrow limit before validation
+        int effectiveLimit = membershipTierService.effectiveBorrowLimit(student, config);
+        if (student.getCurrentBorrowCount() >= effectiveLimit) {
+            throw new ReservationException("Borrow limit reached for this membership tier");
+        }
+        
         BusinessValidators.validateCanBorrow(student, book, config);
 
         BorrowRecord record = factory.createBorrow(bookId, registrationNumber,
@@ -141,12 +154,14 @@ public final class BorrowService {
         }
         Book book = bookRepo.findById(record.getBookId())
                 .orElseThrow(() -> new BookNotFoundException("Book not found: " + record.getBookId()));
+        Student student = studentRepo.findStudentByRegistrationNumber(record.getRegistrationNumber());
         LibraryConfig config = configRepo.get();
         List<Reservation> reservations = reservationRepo.findPendingByBookId(book.getId());
 
         BusinessValidators.validateCanRenew(record, config, reservations);
         record.incrementRenewCount();
-        record.setDueDate(DateUtils.plusDays(DateUtils.today(), config.getLoanPeriodDays()));
+        int effectiveLoanPeriod = membershipTierService.effectiveLoanPeriodDays(student, config);
+        record.setDueDate(DateUtils.plusDays(DateUtils.today(), effectiveLoanPeriod));
         borrowRepo.save(record);
 
         auditService.record(session, "BORROW_RENEW", "Borrow", record.getId(),
@@ -200,5 +215,17 @@ public final class BorrowService {
 
     public long countActive() {
         return borrowRepo.findAllActive().size();
+    }
+
+    /**
+     * Marks a borrowed book as lost. Delegates to {@link LostBookService}.
+     *
+     * @param session              the authenticated session
+     * @param borrowId             the ID of the active borrow record
+     * @param replacementCostPaise replacement cost in paise
+     * @return the newly created {@link LostBookRecord}
+     */
+    public LostBookRecord markLostBook(Session session, String borrowId, long replacementCostPaise) {
+        return lostBookService.markLost(session, borrowId, replacementCostPaise);
     }
 }
