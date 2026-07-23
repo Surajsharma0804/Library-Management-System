@@ -26,6 +26,7 @@ public final class BorrowMapper implements JsonMappable<BorrowRecord> {
         m.put("receivedBy", r.getReceivedBy());
         m.put("status", r.getStatus().name());
         m.put("remarks", r.getRemarks());
+        m.put("branchId", r.getBranchId());
         m.put("createdAt", DateUtils.formatDateTime(r.getCreatedAt()));
         m.put("updatedAt", DateUtils.formatDateTime(r.getUpdatedAt()));
         return m;
@@ -46,6 +47,7 @@ public final class BorrowMapper implements JsonMappable<BorrowRecord> {
                 .receivedBy(JsonUtils.getString(m, "receivedBy"))
                 .status(BorrowStatus.fromString(JsonUtils.requireString(m, "status")))
                 .remarks(JsonUtils.getString(m, "remarks"))
+                .branchId(JsonUtils.getString(m, "branchId"))
                 .createdAt(DateUtils.parseDateTime(JsonUtils.getString(m, "createdAt")))
                 .updatedAt(DateUtils.parseDateTime(JsonUtils.getString(m, "updatedAt")))
                 .build();
