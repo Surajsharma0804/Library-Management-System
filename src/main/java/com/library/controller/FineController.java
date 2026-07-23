@@ -27,17 +27,16 @@ public final class FineController extends BaseController {
     }
 
     public List<Fine> viewAllPendingFines(Session session) {
-        require(session, Permissions.FINE_VIEW);
+        require(session, Permissions.FINE_VIEW_ALL);
         return facade.fines().findAllPending();
     }
 
     public List<Fine> viewOwnFines(Session session, String registrationNumber) {
-        require(session, Permissions.FINE_VIEW);
-        return facade.fines().findByStudent(registrationNumber);
+        return facade.fines().findByStudent(session, registrationNumber);
     }
 
     public List<Fine> viewOwnPendingFines(Session session, String registrationNumber) {
-        require(session, Permissions.FINE_VIEW);
+        require(session, Permissions.FINE_VIEW_OWN);
         return facade.fines().findPendingByStudent(registrationNumber);
     }
 }
