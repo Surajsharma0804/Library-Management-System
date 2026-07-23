@@ -3,7 +3,9 @@ package com.library.service;
 import com.library.service.AuditService;
 import com.library.enums.NotificationType;
 import com.library.enums.FineStatus;
+import com.library.enums.UserRole;
 import com.library.exception.InvalidRegistrationException;
+import com.library.exception.UnauthorizedAccessException;
 import com.library.factory.EntityFactory;
 import com.library.model.Fine;
 import com.library.model.Student;
@@ -11,6 +13,8 @@ import com.library.notification.NotificationEvent;
 import com.library.notification.NotificationPublisher;
 import com.library.repository.FineRepository;
 import com.library.repository.UserRepository;
+import com.library.security.AuthorizationManager;
+import com.library.security.Permissions;
 import com.library.security.Session;
 import com.library.util.DateUtils;
 
@@ -26,6 +30,7 @@ public final class FineService {
     private final EntityFactory factory;
     private final AuditService auditService;
     private final NotificationPublisher notifications;
+    private final AuthorizationManager rbac = new AuthorizationManager();
 
     public FineService(FineRepository repo, UserRepository studentRepo,
                        EntityFactory factory, AuditService auditService,
@@ -40,6 +45,7 @@ public final class FineService {
     /** Records a new fine and updates the student's balance. */
     public Fine recordFine(Session session, String registrationNumber, String borrowId,
                            String bookId, long amountPaise, String reason) {
+        if (amountPaise <= 0) return null;
         Fine fine = factory.createFine(registrationNumber, borrowId, bookId, amountPaise,
                 session == null ? "system" : session.username(), reason);
         repo.save(fine);
@@ -108,7 +114,18 @@ public final class FineService {
         return fine;
     }
 
-    public List<Fine> findByStudent(String registrationNumber) {
+    public List<Fine> findByStudent(Session session, String registrationNumber) {
+        if (session != null && session.role() == UserRole.STUDENT) {
+            rbac.require(session, Permissions.FINE_VIEW_OWN);
+            Student sessionStudent = studentRepo.findStudentByUsername(session.username());
+            if (sessionStudent == null
+                    || !sessionStudent.getRegistrationNumber().equals(registrationNumber)) {
+                throw new UnauthorizedAccessException(
+                        "Students may only view their own fines.");
+            }
+        } else {
+            rbac.require(session, Permissions.FINE_VIEW_ALL);
+        }
         return repo.findByRegistrationNumber(registrationNumber);
     }
 
