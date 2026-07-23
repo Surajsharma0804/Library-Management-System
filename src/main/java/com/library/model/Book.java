@@ -41,6 +41,9 @@ public class Book {
     private int reservedQuantity;
     private BookStatus status;
     private String description;
+    private String coverImagePath;
+    private String deweyDecimal;
+    private String branchId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -69,6 +72,9 @@ public class Book {
         this.reservedQuantity = b.reservedQuantity;
         this.status = b.status == null ? BookStatus.AVAILABLE : b.status;
         this.description = b.description;
+        this.coverImagePath = b.coverImagePath;
+        this.deweyDecimal = b.deweyDecimal;
+        this.branchId = b.branchId;
         this.createdAt = b.createdAt == null ? DateUtils.now() : b.createdAt;
         this.updatedAt = b.updatedAt == null ? this.createdAt : b.updatedAt;
     }
@@ -99,6 +105,9 @@ public class Book {
     public int getBorrowedQuantity() { return totalQuantity - availableQuantity - reservedQuantity; }
     public BookStatus getStatus() { return status; }
     public String getDescription() { return description; }
+    public String getCoverImagePath() { return coverImagePath; }
+    public String getDeweyDecimal() { return deweyDecimal; }
+    public String getBranchId() { return branchId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -121,6 +130,15 @@ public class Book {
     public void setPurchasePricePaise(long purchasePricePaise) { this.purchasePricePaise = purchasePricePaise; touch(); }
     public void setPurchaseDate(LocalDate purchaseDate) { this.purchaseDate = purchaseDate; touch(); }
     public void setDescription(String description) { this.description = description; touch(); }
+    public void setCoverImagePath(String coverImagePath) { this.coverImagePath = coverImagePath; touch(); }
+    public void setDeweyDecimal(String deweyDecimal) {
+        if (deweyDecimal != null && deweyDecimal.length() > 20) {
+            throw new IllegalArgumentException("deweyDecimal must not exceed 20 characters");
+        }
+        this.deweyDecimal = deweyDecimal;
+        touch();
+    }
+    public void setBranchId(String branchId) { this.branchId = branchId; touch(); }
 
     /** Decreases available count when a copy is issued. */
     public void markIssued() {
@@ -244,6 +262,9 @@ public class Book {
         private int reservedQuantity;
         private BookStatus status;
         private String description;
+        private String coverImagePath;
+        private String deweyDecimal;
+        private String branchId;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -271,6 +292,9 @@ public class Book {
         public Builder reservedQuantity(int v) { this.reservedQuantity = v; return this; }
         public Builder status(BookStatus v) { this.status = v; return this; }
         public Builder description(String v) { this.description = v; return this; }
+        public Builder coverImagePath(String v) { this.coverImagePath = v; return this; }
+        public Builder deweyDecimal(String v) { this.deweyDecimal = v; return this; }
+        public Builder branchId(String v) { this.branchId = v; return this; }
         public Builder createdAt(LocalDateTime v) { this.createdAt = v; return this; }
         public Builder updatedAt(LocalDateTime v) { this.updatedAt = v; return this; }
 
