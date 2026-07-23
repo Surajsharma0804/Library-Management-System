@@ -42,6 +42,9 @@ public final class UserMapper implements JsonMappable<User> {
             m.put("membershipExpiry", s.getMembershipExpiry() != null ? s.getMembershipExpiry().toString() : null);
             m.put("fineBalancePaise", s.getFineBalancePaise());
             m.put("borrowCount", s.getCurrentBorrowCount());
+            m.put("homeBranchId", s.getHomeBranchId());
+            m.put("membershipTierId", s.getMembershipTierId());
+            m.put("program", s.getProgram());
         }
         return m;
     }
@@ -86,6 +89,9 @@ public final class UserMapper implements JsonMappable<User> {
                             ? LocalDate.parse((String) m.get("membershipExpiry")) : null)
                     .fineBalancePaise(m.get("fineBalancePaise") instanceof Number n ? n.longValue() : 0L)
                     .currentBorrowCount(m.get("borrowCount") instanceof Number n ? n.intValue() : 0)
+                    .homeBranchId((String) m.getOrDefault("homeBranchId", null))
+                    .membershipTierId((String) m.getOrDefault("membershipTierId", null))
+                    .program((String) m.getOrDefault("program", null))
                     .build();
         };
     }
