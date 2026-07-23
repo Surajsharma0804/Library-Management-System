@@ -45,6 +45,9 @@ public final class BookMapper implements JsonMappable<Book> {
         m.put("reservedQuantity", b.getReservedQuantity());
         m.put("status", b.getStatus().name());
         m.put("description", b.getDescription());
+        m.put("coverImagePath", b.getCoverImagePath());
+        m.put("deweyDecimal", b.getDeweyDecimal());
+        m.put("branchId", b.getBranchId());
         m.put("createdAt", DateUtils.formatDateTime(b.getCreatedAt()));
         m.put("updatedAt", DateUtils.formatDateTime(b.getUpdatedAt()));
         return m;
@@ -77,6 +80,9 @@ public final class BookMapper implements JsonMappable<Book> {
                 .reservedQuantity(JsonUtils.getInt(m, "reservedQuantity") == null ? 0 : JsonUtils.getInt(m, "reservedQuantity"))
                 .status(BookStatus.fromString(JsonUtils.requireString(m, "status")))
                 .description(JsonUtils.getString(m, "description"))
+                .coverImagePath(JsonUtils.getString(m, "coverImagePath"))
+                .deweyDecimal(JsonUtils.getString(m, "deweyDecimal"))
+                .branchId(JsonUtils.getString(m, "branchId"))
                 .createdAt(DateUtils.parseDateTime(JsonUtils.getString(m, "createdAt")))
                 .updatedAt(DateUtils.parseDateTime(JsonUtils.getString(m, "updatedAt")));
         return b.build();
