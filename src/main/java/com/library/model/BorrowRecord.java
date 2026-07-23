@@ -24,6 +24,7 @@ public class BorrowRecord {
     private String receivedBy;
     private BorrowStatus status;
     private String remarks;
+    private String branchId;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,6 +41,7 @@ public class BorrowRecord {
         this.receivedBy = b.receivedBy;
         this.status = b.status == null ? BorrowStatus.ACTIVE : b.status;
         this.remarks = b.remarks;
+        this.branchId = b.branchId;
         this.createdAt = b.createdAt == null ? DateUtils.now() : b.createdAt;
         this.updatedAt = b.updatedAt == null ? this.createdAt : b.updatedAt;
     }
@@ -57,6 +59,7 @@ public class BorrowRecord {
     public String getReceivedBy() { return receivedBy; }
     public BorrowStatus getStatus() { return status; }
     public String getRemarks() { return remarks; }
+    public String getBranchId() { return branchId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
@@ -66,6 +69,7 @@ public class BorrowRecord {
     public void setReceivedBy(String receivedBy) { this.receivedBy = receivedBy; touch(); }
     public void setStatus(BorrowStatus status) { this.status = status; touch(); }
     public void setRemarks(String remarks) { this.remarks = remarks; touch(); }
+    public void setBranchId(String branchId) { this.branchId = branchId; touch(); }
     public void incrementRenewCount() { this.renewCount++; touch(); }
 
     public boolean isOverdue() {
@@ -111,6 +115,7 @@ public class BorrowRecord {
         private String receivedBy;
         private BorrowStatus status;
         private String remarks;
+        private String branchId;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -126,6 +131,7 @@ public class BorrowRecord {
         public Builder receivedBy(String v) { this.receivedBy = v; return this; }
         public Builder status(BorrowStatus v) { this.status = v; return this; }
         public Builder remarks(String v) { this.remarks = v; return this; }
+        public Builder branchId(String v) { this.branchId = v; return this; }
         public Builder createdAt(LocalDateTime v) { this.createdAt = v; return this; }
         public Builder updatedAt(LocalDateTime v) { this.updatedAt = v; return this; }
 
