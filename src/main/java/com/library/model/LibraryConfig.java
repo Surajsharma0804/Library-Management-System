@@ -15,6 +15,7 @@ public final class LibraryConfig {
     private long finePerDayPaise = 500;
     private int reservationHoldDays = 7;
     private int membershipMonths = 12;
+    private String libraryName;
     private final List<LocalDate> holidays = new ArrayList<>();
 
     public int getLoanPeriodDays() { return loanPeriodDays; }
@@ -32,6 +33,8 @@ public final class LibraryConfig {
     public void setReservationHoldDays(int v) { this.reservationHoldDays = v; }
     public int getMembershipMonths() { return membershipMonths; }
     public void setMembershipMonths(int v) { this.membershipMonths = v; }
+    public String getLibraryName() { return libraryName; }
+    public void setLibraryName(String v) { this.libraryName = v; }
     public List<LocalDate> getHolidays() { return new ArrayList<>(holidays); }
     public void addHoliday(LocalDate d) { holidays.add(d); }
     public void removeHoliday(LocalDate d) { holidays.remove(d); }
