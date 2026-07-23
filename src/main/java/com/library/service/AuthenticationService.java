@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.config.Constants;
 import com.library.enums.UserRole;
 import com.library.exception.ValidationException;
 import com.library.exception.UnauthorizedAccessException;
@@ -13,33 +14,89 @@ import com.library.util.AppLogger;
 import com.library.security.PasswordHasher;
 import com.library.validator.BusinessValidators;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Authentication service: verifies credentials, issues sessions, and
- * handles password changes. This is the single authority on who is
- * logged in.
+ * Authentication service: verifies credentials, issues sessions, handles
+ * password changes, and enforces account lockout after repeated failures.
+ *
+ * <p>Lockout rules (Requirements 30.1, 30.2):
+ * <ul>
+ *   <li>After {@link Constants#MAX_LOGIN_ATTEMPTS} consecutive failed attempts
+ *       within the {@link Constants#LOCKOUT_WINDOW_MINUTES}-minute window the
+ *       account is locked for {@link Constants#LOCKOUT_DURATION_MINUTES} minutes.</li>
+ *   <li>A successful login clears the failure counter.</li>
+ * </ul>
  */
 public final class AuthenticationService
         implements com.library.interfaces.AuthenticationService {
 
     private static final String LOG = "AuthService";
+
+    // ------------------------------------------------------------------ Lockout
+    /**
+     * Tracks consecutive failed login attempts per username.
+     * Lazily evicted when the lockout window expires.
+     */
+    private final ConcurrentHashMap<String, FailedAttempt> failedAttempts = new ConcurrentHashMap<>();
+
+    /**
+     * Immutable snapshot of failed-attempt state for a single username.
+     */
+    private record FailedAttempt(int count, Instant firstFailure) {}
+
+    // --------------------------------------------------------------- Repositories
     private final StaffRepository staffRepo;
     private final UserRepository studentRepo;
     private final SessionManager sessionManager;
 
+    /**
+     * Creates an {@code AuthenticationService}.
+     *
+     * @param staffRepo      repository for staff/admin users; must not be {@code null}
+     * @param studentRepo    repository for student users; must not be {@code null}
+     * @param sessionManager session lifecycle manager; must not be {@code null}
+     */
     public AuthenticationService(StaffRepository staffRepo,
                                  UserRepository studentRepo,
                                  SessionManager sessionManager) {
-        this.staffRepo = staffRepo;
-        this.studentRepo = studentRepo;
-        this.sessionManager = sessionManager;
+        this.staffRepo      = Objects.requireNonNull(staffRepo,      "staffRepo");
+        this.studentRepo    = Objects.requireNonNull(studentRepo,    "studentRepo");
+        this.sessionManager = Objects.requireNonNull(sessionManager, "sessionManager");
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Enforces account lockout: if the username has accumulated
+     * {@link Constants#MAX_LOGIN_ATTEMPTS} failures within the lockout window,
+     * a {@link ValidationException} is thrown with the unlock time (Req 30.1).
+     * A successful authentication clears all failure counters (Req 30.2).
+     */
     @Override
     public String login(String username, String password) {
         Objects.requireNonNull(username, "username");
         Objects.requireNonNull(password, "password");
+
+        // --- Lockout check (Req 30.1) ---
+        FailedAttempt attempt = failedAttempts.get(username);
+        if (attempt != null && attempt.count() >= Constants.MAX_LOGIN_ATTEMPTS) {
+            Instant lockoutEnd = attempt.firstFailure()
+                    .plus(Constants.LOCKOUT_DURATION_MINUTES, ChronoUnit.MINUTES);
+            if (Instant.now().isBefore(lockoutEnd)) {
+                AppLogger.warn(LOG, "Account locked for user: " + username);
+                throw new ValidationException(
+                        "Account locked. Too many failed attempts. Try again after " + lockoutEnd);
+            } else {
+                // Lockout window expired — evict lazily
+                failedAttempts.remove(username);
+            }
+        }
+
+        // --- Resolve user ---
         User user = staffRepo.findByUsername(username);
         if (user == null) {
             Student student = studentRepo.findStudentByUsername(username);
@@ -49,6 +106,7 @@ public final class AuthenticationService
         }
         if (user == null) {
             AppLogger.warn(LOG, "Failed login for unknown username: " + username);
+            recordFailure(username);
             throw new ValidationException("Invalid username or password.");
         }
         if (!user.isActive()) {
@@ -57,8 +115,12 @@ public final class AuthenticationService
         }
         if (!PasswordHasher.verify(user.getPasswordHash(), password)) {
             AppLogger.warn(LOG, "Failed login (bad password) for user: " + username);
+            recordFailure(username);
             throw new ValidationException("Invalid username or password.");
         }
+
+        // --- Success: clear failures (Req 30.2) ---
+        failedAttempts.remove(username);
         Session session = sessionManager.create(user);
         AppLogger.info(LOG, "User " + username + " logged in as " + user.getRole());
         return session.token();
@@ -99,6 +161,28 @@ public final class AuthenticationService
         AppLogger.info(LOG, "Password reset for student " + registrationNumber);
         return tempPassword;
     }
+
+    // -------------------------------------------------------------------------
+    // Lockout helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Records a failed login attempt for {@code username}, starting or advancing
+     * the rolling failure window.
+     */
+    private void recordFailure(String username) {
+        failedAttempts.compute(username, (k, existing) -> {
+            if (existing == null || Instant.now().isAfter(
+                    existing.firstFailure().plus(Constants.LOCKOUT_WINDOW_MINUTES, ChronoUnit.MINUTES))) {
+                return new FailedAttempt(1, Instant.now());
+            }
+            return new FailedAttempt(existing.count() + 1, existing.firstFailure());
+        });
+    }
+
+    // -------------------------------------------------------------------------
+    // Persistence helpers
+    // -------------------------------------------------------------------------
 
     private User resolveUser(Session session) {
         if (session.role() == UserRole.STUDENT) {
