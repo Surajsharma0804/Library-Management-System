@@ -129,13 +129,33 @@ jobs:
       - name: Build fat JAR
         run: mvn package -DskipTests -q
 
+      - name: Convert icon to macOS format
+        run: |
+          # Create the iconset directory structure macOS requires
+          mkdir -p installer/AppIcon.iconset
+          # Use sips to generate every required icon size from the banner PNG
+          for size in 16 32 64 128 256 512; do
+            sips -z $size $size installer/app-icon.png --out installer/AppIcon.iconset/icon_${size}x${size}.png 2>/dev/null || true
+          done
+          for size in 32 64 128 256 512 1024; do
+            half=$((size / 2))
+            sips -z $size $size installer/app-icon.png --out installer/AppIcon.iconset/icon_${half}x${half}@2x.png 2>/dev/null || true
+          done
+          # Build the .icns bundle
+          iconutil -c icns installer/AppIcon.iconset -o installer/app-icon.icns 2>/dev/null || echo "iconutil failed, building without custom icon"
+
       - name: Build DMG installer
         run: |
+          ICON_FLAG=""
+          if [ -f "installer/app-icon.icns" ]; then
+            ICON_FLAG="--icon installer/app-icon.icns"
+          fi
           jpackage --type dmg \
             --name "Library Management System" \
             --app-version "${{ steps.version.outputs.VERSION }}" \
             --vendor "Central Library" \
             --description "University Central Library Management System" \
+            $ICON_FLAG \
             --input "target" \
             --main-jar "library-management-system-1.0.0.jar" \
             --main-class "com.library.Main" \
@@ -144,11 +164,16 @@ jobs:
 
       - name: Build PKG installer
         run: |
+          ICON_FLAG=""
+          if [ -f "installer/app-icon.icns" ]; then
+            ICON_FLAG="--icon installer/app-icon.icns"
+          fi
           jpackage --type pkg \
             --name "Library Management System" \
             --app-version "${{ steps.version.outputs.VERSION }}" \
             --vendor "Central Library" \
             --description "University Central Library Management System" \
+            $ICON_FLAG \
             --input "target" \
             --main-jar "library-management-system-1.0.0.jar" \
             --main-class "com.library.Main" \
