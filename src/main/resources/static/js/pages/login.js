@@ -5,6 +5,9 @@ const LoginPage = (() => {
     function render(container) {
         container.innerHTML = `
             <div class="login-wrapper">
+                <button class="theme-toggle" id="login-theme-toggle"
+                        style="position:fixed;top:16px;right:16px;z-index:10;"
+                        title="Toggle dark mode">${ThemeManager.getIcon()}</button>
                 <div class="login-card">
                     <img src="/assets/logo.png" alt="Library" class="login-logo">
                     <h1 class="login-title">Central Library</h1>
@@ -90,6 +93,15 @@ const LoginPage = (() => {
         pass.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleLogin(); });
         user.addEventListener('keydown', (e) => { if (e.key === 'Enter') pass.focus(); });
         user.focus();
+
+        // Theme toggle on login page
+        const themeBtn = document.getElementById('login-theme-toggle');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                ThemeManager.toggle();
+                themeBtn.textContent = ThemeManager.getIcon();
+            });
+        }
     }
 
     return { render };

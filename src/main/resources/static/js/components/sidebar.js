@@ -55,6 +55,7 @@ const Sidebar = (() => {
                     <span class="sidebar-brand-name">Central Library</span>
                     <span class="sidebar-brand-sub">Management System</span>
                 </div>
+                <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">${ThemeManager.getIcon()}</button>
             </div>
             <nav class="sidebar-nav">
                 <div class="sidebar-section">
@@ -101,6 +102,15 @@ const Sidebar = (() => {
                 App.navigate('login');
             });
         });
+
+        // Theme toggle
+        const themeBtn = document.getElementById('theme-toggle');
+        if (themeBtn) {
+            themeBtn.addEventListener('click', () => {
+                ThemeManager.toggle();
+                themeBtn.textContent = ThemeManager.getIcon();
+            });
+        }
     }
 
     return { render };
