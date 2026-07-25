@@ -3,7 +3,7 @@
  * Uses a cache-first strategy for static assets and
  * network-first for API calls.
  */
-const CACHE_NAME = 'lms-v2.0.0';
+const CACHE_NAME = 'lms-v2.1.0';
 const SHELL_ASSETS = [
     '/',
     '/index.html',
