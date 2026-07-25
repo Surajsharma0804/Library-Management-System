@@ -144,13 +144,13 @@ jobs:
           # Build the .icns bundle
           iconutil -c icns installer/AppIcon.iconset -o installer/app-icon.icns 2>/dev/null || echo "iconutil failed, building without custom icon"
 
-      - name: Build DMG installer
+      - name: Build app image
         run: |
           ICON_FLAG=""
           if [ -f "installer/app-icon.icns" ]; then
             ICON_FLAG="--icon installer/app-icon.icns"
           fi
-          jpackage --type dmg \
+          jpackage --type app-image \
             --name "Library Management System" \
             --app-version "${{ steps.version.outputs.VERSION }}" \
             --vendor "Central Library" \
@@ -159,26 +159,37 @@ jobs:
             --input "target" \
             --main-jar "library-management-system-1.0.0.jar" \
             --main-class "com.library.Main" \
-            --dest "installer/output" \
+            --dest "installer/app-output" \
             --java-options "-Xmx512m"
+
+      - name: Ad-hoc code sign the app bundle
+        run: |
+          APP_PATH="installer/app-output/Library Management System.app"
+          echo "Signing app bundle..."
+          # Sign all nested binaries and frameworks first
+          find "$APP_PATH" -type f \( -name "*.dylib" -o -name "*.jnilib" -o -perm +111 \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+          # Sign the entire app bundle with deep flag
+          codesign --force --deep --sign - "$APP_PATH"
+          # Verify the signature
+          codesign --verify --verbose "$APP_PATH" && echo "Code signing verified successfully" || echo "Code signing verification had warnings (non-fatal)"
+
+      - name: Build DMG from signed app
+        run: |
+          mkdir -p installer/output
+          # Create a DMG from the signed app image
+          hdiutil create -volname "Library Management System" \
+            -srcfolder "installer/app-output" \
+            -ov -format UDZO \
+            "installer/output/Library Management System-${{ steps.version.outputs.VERSION }}.dmg"
 
       - name: Build PKG installer
         run: |
-          ICON_FLAG=""
-          if [ -f "installer/app-icon.icns" ]; then
-            ICON_FLAG="--icon installer/app-icon.icns"
-          fi
-          jpackage --type pkg \
-            --name "Library Management System" \
-            --app-version "${{ steps.version.outputs.VERSION }}" \
-            --vendor "Central Library" \
-            --description "University Central Library Management System" \
-            $ICON_FLAG \
-            --input "target" \
-            --main-jar "library-management-system-1.0.0.jar" \
-            --main-class "com.library.Main" \
-            --dest "installer/output" \
-            --java-options "-Xmx512m"
+          # Build PKG from the signed app image using productbuild
+          pkgbuild --root "installer/app-output" \
+            --install-location "/Applications" \
+            --identifier "com.centrallibrary.managementsystem" \
+            --version "${{ steps.version.outputs.VERSION }}" \
+            "installer/output/Library Management System-${{ steps.version.outputs.VERSION }}.pkg"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
