@@ -27,7 +27,7 @@ public final class AppTheme {
 
     /* ────────── Theme state & LookAndFeel ────────────────────────── */
 
-    private static boolean darkMode = true;
+    private static boolean darkMode = false;
     private static final List<Runnable> listeners = new ArrayList<>();
 
     public static boolean isDark() { return darkMode; }
