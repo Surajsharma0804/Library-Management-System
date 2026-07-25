@@ -32,3 +32,10 @@ node_modules/
 .jqwik-database
 .kiro/
 compile_test.bat
+
+# Installer build artifacts
+installer/output/
+installer/wix/
+installer/*.zip
+installer/*.exe
+!installer/app-icon.ico
