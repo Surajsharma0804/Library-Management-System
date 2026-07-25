@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="University Central Library Management System — Search books, manage borrows, and track your library account.">
+    <meta name="theme-color" content="#0b1120">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Central Library">
+
+    <title>Central Library — Management System</title>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/assets/logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/logo.png">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+    <div id="app">
+        <div class="loading-center" style="min-height:100vh">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <!-- Components (load order matters) -->
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/components/toast.js"></script>
+    <script src="/js/components/modal.js"></script>
+    <script src="/js/components/sidebar.js"></script>
+
+    <!-- Pages -->
+    <script src="/js/pages/login.js"></script>
+    <script src="/js/pages/dashboard.js"></script>
+    <script src="/js/pages/catalog.js"></script>
+    <script src="/js/pages/borrows.js"></script>
+    <script src="/js/pages/fines.js"></script>
+    <script src="/js/pages/students.js"></script>
+    <script src="/js/pages/books-mgmt.js"></script>
+    <script src="/js/pages/profile.js"></script>
+
+    <!-- App Shell (loads last) -->
+    <script src="/js/app.js"></script>
+
+    <script>
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .catch(() => {});
+        }
+    </script>
+</body>
+</html>
