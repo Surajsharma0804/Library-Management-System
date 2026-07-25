@@ -31,7 +31,14 @@ public final class EntityFactory {
                                   String department, String course, int semester, String section) {
         String regNo = counters.nextId("REG");
         String cardNo = counters.nextId("LIB");
-        return Student.builder().id(counters.nextId("student")).firstName(firstName).lastName(lastName)
+        // Auto-generate a username from first name + last initial + numeric suffix
+        String baseUser = (firstName.toLowerCase().replaceAll("[^a-z]", "")
+                + (lastName != null && !lastName.isEmpty() ? lastName.substring(0, 1).toLowerCase() : ""))
+                .trim();
+        if (baseUser.isEmpty()) baseUser = "student";
+        String username = baseUser + regNo.replaceAll("[^0-9]", "");
+        return Student.builder().id(counters.nextId("student")).username(username)
+                .firstName(firstName).lastName(lastName)
                 .email(email).phone(phone).registrationNumber(regNo).libraryCardNumber(cardNo)
                 .department(department).course(course).semester(semester).section(section)
                 .borrowLimit(5).membershipStatus(MembershipStatus.ACTIVE)

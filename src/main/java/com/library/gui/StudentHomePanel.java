@@ -74,40 +74,36 @@ public final class StudentHomePanel extends JPanel {
     public void refresh(Session session) {
         setBackground(AppTheme.bg());
 
-        // Clear metrics with loading placeholders
+        // Show loading placeholders
         metricsRow.removeAll();
         for (int i = 0; i < 5; i++) {
-            JPanel placeholder = AppTheme.metricCard("Loading…", "—", AppTheme.ACCENT);
-            metricsRow.add(placeholder);
+            metricsRow.add(AppTheme.metricCard("Loading…", "—", AppTheme.ACCENT));
         }
         metricsRow.revalidate();
 
-        new SwingWorker<String[], Void>() {
+        // Single background worker for both metrics and recommendations
+        new SwingWorker<Void, Void>() {
+            String[] vals = new String[5];
+            List<Book> recommendations = List.of();
+
             @Override
-            protected String[] doInBackground() {
-                String[] vals = new String[5];
+            protected Void doInBackground() {
                 try {
                     Student student = facade.userRepo().findStudentByUsername(session.username());
                     if (student == null) {
                         for (int i = 0; i < 5; i++) vals[i] = "Error";
-                        return vals;
+                        return null;
                     }
                     String regNo = student.getRegistrationNumber();
 
-                    // 1. Active borrows
+                    // 1. Active borrows (reuse query for overdue count)
                     try {
                         List<BorrowRecord> borrows = facade.borrowRepo()
                                 .findActiveByRegistrationNumber(regNo);
                         vals[0] = String.valueOf(borrows.size());
-                    } catch (Exception e) { vals[0] = "Error"; }
-
-                    // 2. Overdue borrows
-                    try {
-                        List<BorrowRecord> borrows = facade.borrowRepo()
-                                .findActiveByRegistrationNumber(regNo);
                         long overdue = borrows.stream().filter(BorrowRecord::isOverdue).count();
                         vals[1] = String.valueOf(overdue);
-                    } catch (Exception e) { vals[1] = "Error"; }
+                    } catch (Exception e) { vals[0] = "Error"; vals[1] = "Error"; }
 
                     // 3. Pending reservations
                     try {
@@ -117,12 +113,9 @@ public final class StudentHomePanel extends JPanel {
                         vals[2] = String.valueOf(pending);
                     } catch (Exception e) { vals[2] = "Error"; }
 
-                    // 4. Outstanding fine
+                    // 4. Outstanding fine (use already-loaded student instead of re-querying)
                     try {
-                        Student fresh = facade.userRepo().findStudentByUsername(session.username());
-                        vals[3] = fresh != null
-                                ? String.format("₹%.2f", fresh.getFineBalancePaise() / 100.0)
-                                : "₹0.00";
+                        vals[3] = String.format("₹%.2f", student.getFineBalancePaise() / 100.0);
                     } catch (Exception e) { vals[3] = "Error"; }
 
                     // 5. Unread notifications
@@ -133,64 +126,50 @@ public final class StudentHomePanel extends JPanel {
                         vals[4] = String.valueOf(unread);
                     } catch (Exception e) { vals[4] = "Error"; }
 
+                    // 6. Recommendations
+                    try {
+                        recommendations = facade.recommendations().recommend(regNo)
+                                .stream().limit(5).toList();
+                    } catch (Exception e) {
+                        recommendations = List.of();
+                    }
+
                 } catch (Exception e) {
                     for (int i = 0; i < 5; i++) if (vals[i] == null) vals[i] = "Error";
                 }
-                return vals;
+                return null;
             }
 
             @Override
             protected void done() {
                 try {
-                    String[] vals = get();
-                    metricsRow.removeAll();
-                    Color c0 = "Error".equals(vals[0]) ? AppTheme.RED : AppTheme.ACCENT;
-                    Color c1 = "Error".equals(vals[1]) || !"0".equals(vals[1]) ? AppTheme.RED : AppTheme.GREEN;
-                    Color c2 = "Error".equals(vals[2]) ? AppTheme.RED : AppTheme.AMBER;
-                    Color c3 = "Error".equals(vals[3]) ? AppTheme.RED : AppTheme.AMBER;
-                    Color c4 = "Error".equals(vals[4]) ? AppTheme.RED : AppTheme.ACCENT;
+                    get();
+                } catch (Exception ignored) { return; }
 
-                    metricsRow.add(AppTheme.metricCard("Active Borrows",        vals[0], "Books currently on loan",    c0));
-                    metricsRow.add(AppTheme.metricCard("Overdue Borrows",       vals[1], "Action required",            c1));
-                    metricsRow.add(AppTheme.metricCard("Pending Reservations",  vals[2], "In queue",                   c2));
-                    metricsRow.add(AppTheme.metricCard("Outstanding Fine",      vals[3], "Balance due",                c3));
-                    metricsRow.add(AppTheme.metricCard("Unread Notifications",  vals[4], "New messages",               c4));
-                    metricsRow.revalidate();
-                } catch (Exception ignored) {}
-            }
-        }.execute();
+                // Update metrics
+                metricsRow.removeAll();
+                Color c0 = "Error".equals(vals[0]) ? AppTheme.RED : AppTheme.ACCENT;
+                Color c1 = "Error".equals(vals[1]) || !"0".equals(vals[1]) ? AppTheme.RED : AppTheme.GREEN;
+                Color c2 = "Error".equals(vals[2]) ? AppTheme.RED : AppTheme.AMBER;
+                Color c3 = "Error".equals(vals[3]) ? AppTheme.RED : AppTheme.AMBER;
+                Color c4 = "Error".equals(vals[4]) ? AppTheme.RED : AppTheme.ACCENT;
 
-        // Recommendations (separate SwingWorker)
-        new SwingWorker<List<Book>, Void>() {
-            String regNo;
+                metricsRow.add(AppTheme.metricCard("Active Borrows",        vals[0], "Books currently on loan",    c0));
+                metricsRow.add(AppTheme.metricCard("Overdue Borrows",       vals[1], "Action required",            c1));
+                metricsRow.add(AppTheme.metricCard("Pending Reservations",  vals[2], "In queue",                   c2));
+                metricsRow.add(AppTheme.metricCard("Outstanding Fine",      vals[3], "Balance due",                c3));
+                metricsRow.add(AppTheme.metricCard("Unread Notifications",  vals[4], "New messages",               c4));
+                metricsRow.revalidate();
 
-            @Override
-            protected List<Book> doInBackground() {
-                try {
-                    Student student = facade.userRepo().findStudentByUsername(session.username());
-                    if (student == null) return List.of();
-                    regNo = student.getRegistrationNumber();
-                    return facade.recommendations().recommend(regNo).stream().limit(5).toList();
-                } catch (Exception e) {
-                    return List.of();
-                }
-            }
-
-            @Override
-            protected void done() {
-                try {
-                    List<Book> recs = get();
-                    // Replace center panel with recommendations card
-                    Container parent = centerPanel.getParent();
-                    if (parent == null) return;
+                // Update recommendations
+                Container parent = centerPanel.getParent();
+                if (parent != null) {
                     parent.remove(centerPanel);
-
-                    JPanel recoCard = buildRecommendationsCard(recs);
-                    centerPanel = recoCard;
+                    centerPanel = buildRecommendationsCard(recommendations);
                     parent.add(centerPanel, BorderLayout.CENTER);
                     parent.revalidate();
                     parent.repaint();
-                } catch (Exception ignored) {}
+                }
             }
         }.execute();
     }

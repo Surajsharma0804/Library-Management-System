@@ -234,93 +234,96 @@ public final class DashboardPanel extends JPanel {
 
         JPanel metricsRow = new JPanel(new GridLayout(1, 4, 16, 0));
         metricsRow.setOpaque(false);
+        metricsRow.setPreferredSize(new Dimension(0, 110));
 
         JPanel analyticsContainer = new JPanel(new GridBagLayout());
         analyticsContainer.setOpaque(false);
-
-        int totalBooks = 0, availBooks = 0, borrowed = 0, overdue = 0,
-                students = 0, reservations = 0;
-        double fines = 0;
-
-        try {
-            var stats = facade.dashboard().getDashboardSummary(session);
-            totalBooks    = stats.getTotalBooks();
-            availBooks    = stats.getAvailableBooks();
-            borrowed      = stats.getBorrowedBooks();
-            overdue       = stats.getOverdueBooks();
-            students      = stats.getTotalStudents();
-            fines         = stats.getTotalFineAmountPaise() / 100.0;
-            reservations  = stats.getPendingReservations();
-        } catch (Exception ignored) {}
-
-        metricsRow.add(AppTheme.metricCard("Total Collection", String.valueOf(totalBooks), "In catalog system", AppTheme.ACCENT));
-        metricsRow.add(AppTheme.metricCard("Available", String.valueOf(availBooks), "Ready for checkout", AppTheme.GREEN));
-        metricsRow.add(AppTheme.metricCard("Active Borrows", String.valueOf(borrowed), "Currently checked out", AppTheme.AMBER));
-        metricsRow.add(AppTheme.metricCard("Overdue", String.valueOf(overdue), "Action required", AppTheme.RED));
-
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.BOTH; gbc.weighty = 1.0;
-        gbc.gridx = 0; gbc.weightx = 0.65; gbc.insets = new Insets(0, 0, 0, 12);
-        analyticsContainer.add(createChartPanel(borrowed, availBooks, overdue), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.35; gbc.insets = new Insets(0, 0, 0, 0);
-        final double ff = fines;
-        analyticsContainer.add(createTimelinePanel(students, ff, reservations), gbc);
 
         JPanel mainContent = new JPanel(new BorderLayout(0, 16));
         mainContent.setOpaque(false);
         mainContent.add(metricsRow, BorderLayout.NORTH);
         mainContent.add(analyticsContainer, BorderLayout.CENTER);
         add(mainContent, BorderLayout.CENTER);
-    }
 
-    // ── Chart helpers ─────────────────────────────────────────────────────────
+        // Load all data off the EDT via SwingWorker
+        new SwingWorker<Void, Void>() {
+            int totalBooks, availBooks, borrowed, overdue, students, reservations;
+            double fines;
+            Map<String, Long> monthlyData;
+            java.util.List<com.library.model.AuditLog> recentAudit;
 
-    private JPanel createChartPanel(int borrowed, int avail, int overdue) {
-        JPanel panel = new JPanel() {
-            @Override protected void paintComponent(Graphics g) {
-                AppTheme.aa(g); var g2 = (Graphics2D) g;
-                int w = getWidth(), h = getHeight();
-                g2.setColor(AppTheme.bgCard());
-                g2.fill(new RoundRectangle2D.Float(0, 0, w, h, AppTheme.CARD_R, AppTheme.CARD_R));
-                g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f));
-                g2.draw(new RoundRectangle2D.Float(.5f, .5f, w-1, h-1, AppTheme.CARD_R, AppTheme.CARD_R));
-
-                int padding = 40, chartW = w - padding * 2, chartH = h - 100;
-                int originX = padding, originY = h - 45;
-
-                g2.setColor(AppTheme.fg()); g2.setFont(AppTheme.H3);
-                g2.drawString("Monthly Circulation Overview", padding, 32);
-                g2.setColor(AppTheme.fgSecondary()); g2.setFont(AppTheme.SMALL);
-                g2.drawString("Circulation trends across academic quarters", padding, 48);
-
-                g2.setColor(AppTheme.border()); g2.setStroke(new BasicStroke(1f,
-                        BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{4f}, 0f));
-                for (int i = 1; i <= 4; i++) {
-                    int y = originY - (chartH * i / 4);
-                    g2.drawLine(originX, y, originX + chartW, y);
+            @Override
+            protected Void doInBackground() {
+                try {
+                    var stats      = facade.dashboard().getDashboardSummary(session);
+                    totalBooks     = stats.getTotalBooks();
+                    availBooks     = stats.getAvailableBooks();
+                    borrowed       = stats.getBorrowedBooks();
+                    overdue        = stats.getOverdueBooks();
+                    students       = stats.getTotalStudents();
+                    fines          = stats.getTotalFineAmountPaise() / 100.0;
+                    reservations   = stats.getPendingReservations();
+                } catch (Exception ignored) {}
+                try {
+                    monthlyData = facade.analytics()
+                            .monthlyBorrowCounts(Year.now().getValue());
+                } catch (Exception e) {
+                    monthlyData = Map.of();
                 }
-
-                String[] months = {"Jan", "Feb", "Mar", "Apr", "May", "Jun"};
-                int[] dataVal   = {42, 68, 55, 89, 74, 95};
-                int maxVal = 100, barGap = chartW / months.length, barWidth = 28;
-                g2.setStroke(new BasicStroke(1f));
-                for (int i = 0; i < months.length; i++) {
-                    int x  = originX + (i * barGap) + (barGap - barWidth) / 2;
-                    int bh = (int) (((double) dataVal[i] / maxVal) * chartH);
-                    int y  = originY - bh;
-                    g2.setColor(AppTheme.ACCENT);
-                    g2.fill(new RoundRectangle2D.Float(x, y, barWidth, bh, 6, 6));
-                    g2.setColor(AppTheme.fgSecondary()); g2.setFont(AppTheme.SMALL);
-                    var fm = g2.getFontMetrics();
-                    g2.drawString(months[i], x + (barWidth - fm.stringWidth(months[i])) / 2, originY + 18);
+                try {
+                    var all = facade.auditRepo().findAll();
+                    all.sort((a, b) -> {
+                        if (a.timestamp() == null || b.timestamp() == null) return 0;
+                        return b.timestamp().compareTo(a.timestamp());
+                    });
+                    recentAudit = all.stream().limit(3).toList();
+                } catch (Exception e) {
+                    recentAudit = java.util.List.of();
                 }
+                return null;
             }
-        };
-        panel.setOpaque(false);
-        return panel;
+
+            @Override
+            protected void done() {
+                // Stat cards
+                metricsRow.removeAll();
+                metricsRow.add(AppTheme.metricCard("Total Collection", String.valueOf(totalBooks), "In catalog system", AppTheme.ACCENT));
+                metricsRow.add(AppTheme.metricCard("Available", String.valueOf(availBooks), "Ready for checkout", AppTheme.GREEN));
+                metricsRow.add(AppTheme.metricCard("Active Borrows", String.valueOf(borrowed), "Currently checked out", AppTheme.AMBER));
+                metricsRow.add(AppTheme.metricCard("Overdue", String.valueOf(overdue), "Action required", AppTheme.RED));
+
+                // Chart and timeline
+                analyticsContainer.removeAll();
+                GridBagConstraints gbc = new GridBagConstraints();
+                gbc.fill = GridBagConstraints.BOTH; gbc.weighty = 1.0;
+                gbc.gridx = 0; gbc.weightx = 0.65; gbc.insets = new Insets(0, 0, 0, 12);
+
+                // Real data-driven bar chart
+                if (monthlyData != null && !monthlyData.isEmpty()) {
+                    String[] months = monthlyData.keySet().toArray(new String[0]);
+                    long[] vals = monthlyData.values().stream().mapToLong(Long::longValue).toArray();
+                    ChartPanel bar = ChartPanel.barChart(
+                            "Monthly Circulation (" + Year.now().getValue() + ")", months, vals);
+                    bar.setBackground(AppTheme.bgCard());
+                    analyticsContainer.add(bar, gbc);
+                } else {
+                    JPanel empty = new JPanel();
+                    empty.setOpaque(false);
+                    analyticsContainer.add(empty, gbc);
+                }
+
+                gbc.gridx = 1; gbc.weightx = 0.35; gbc.insets = new Insets(0, 0, 0, 0);
+                analyticsContainer.add(createTimelinePanel(students, fines, reservations, recentAudit), gbc);
+
+                revalidate(); repaint();
+            }
+        }.execute();
     }
 
-    private JPanel createTimelinePanel(int students, double fines, int reservations) {
+    // ── Telemetry side panel ─────────────────────────────────────────────────
+
+    private JPanel createTimelinePanel(int students, double fines, int reservations,
+                                        java.util.List<com.library.model.AuditLog> auditEntries) {
         JPanel panel = new JPanel() {
             @Override protected void paintComponent(Graphics g) {
                 AppTheme.aa(g); var g2 = (Graphics2D) g;
@@ -350,12 +353,34 @@ public final class DashboardPanel extends JPanel {
         actHdr.setFont(AppTheme.SMALL_B); actHdr.setForeground(AppTheme.fgMuted());
         actHdr.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.add(actHdr); panel.add(Box.createVerticalStrut(10));
-        panel.add(createEventItem("Book Catalogue Updated", "System Admin • Just now"));
-        panel.add(Box.createVerticalStrut(8));
-        panel.add(createEventItem("Daily Circulation Backup", "Automated Task • 1h ago"));
-        panel.add(Box.createVerticalStrut(8));
-        panel.add(createEventItem("Fine Clearance Processed", "Librarian • 3h ago"));
+
+        if (auditEntries != null && !auditEntries.isEmpty()) {
+            for (int i = 0; i < auditEntries.size(); i++) {
+                var entry = auditEntries.get(i);
+                String eventText = entry.action() != null ? entry.action().replace("_", " ") : "System event";
+                String meta = (entry.actorId() != null ? entry.actorId() : "System")
+                        + " • " + formatTimestamp(entry.timestamp());
+                panel.add(createEventItem(eventText, meta));
+                if (i < auditEntries.size() - 1) panel.add(Box.createVerticalStrut(8));
+            }
+        } else {
+            panel.add(createEventItem("No recent events", "System"));
+        }
+
         return panel;
+    }
+
+    /** Formats a timestamp into a human-friendly relative string. */
+    private String formatTimestamp(java.time.LocalDateTime ts) {
+        if (ts == null) return "Unknown";
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        long minutes = java.time.Duration.between(ts, now).toMinutes();
+        if (minutes < 1) return "Just now";
+        if (minutes < 60) return minutes + "m ago";
+        long hours = minutes / 60;
+        if (hours < 24) return hours + "h ago";
+        long days = hours / 24;
+        return days + "d ago";
     }
 
     private JPanel createStatRow(String label, String val, Color col) {
@@ -372,7 +397,7 @@ public final class DashboardPanel extends JPanel {
         item.setOpaque(false); item.setLayout(new BoxLayout(item, BoxLayout.Y_AXIS));
         item.setAlignmentX(Component.LEFT_ALIGNMENT);
         JLabel t = new JLabel("• " + text); t.setFont(AppTheme.SMALL_B); t.setForeground(AppTheme.fg());
-        JLabel m = new JLabel("   " + meta); m.setFont(new Font("Segoe UI", Font.PLAIN, 11)); m.setForeground(AppTheme.fgMuted());
+        JLabel m = new JLabel("   " + meta); m.setFont(AppTheme.SMALL); m.setForeground(AppTheme.fgMuted());
         item.add(t); item.add(m);
         return item;
     }

@@ -58,7 +58,7 @@ public final class MainFrame extends JFrame {
     private Session session;
     private final Map<String, NavItem> nav = new LinkedHashMap<>();
     private String active = "";
-    private JPanel sidebar, topBar, main;
+    private JPanel sidebar, topBar, main, centerPanel;
 
     public MainFrame() {
         AppTheme.initLookAndFeel();
@@ -106,9 +106,9 @@ public final class MainFrame extends JFrame {
         nav.clear();
 
         main = new JPanel(new BorderLayout());
-        JPanel center = new JPanel(new BorderLayout());
+        centerPanel = new JPanel(new BorderLayout());
         topBar = topBar();
-        center.add(topBar, BorderLayout.NORTH);
+        centerPanel.add(topBar, BorderLayout.NORTH);
 
         // Build role-specific panels and nav
         switch (session.role()) {
@@ -117,17 +117,19 @@ public final class MainFrame extends JFrame {
             case STUDENT -> buildStudentUI();
         }
 
-        center.add(content, BorderLayout.CENTER);
+        centerPanel.add(content, BorderLayout.CENTER);
         sidebar = sidebar(session.role());
         main.add(sidebar, BorderLayout.WEST);
-        main.add(center, BorderLayout.CENTER);
+        main.add(centerPanel, BorderLayout.CENTER);
         root.add(main, "MAIN");
 
         rootCards.show(root, "MAIN");
 
-        // Navigate to first item
-        String first = nav.keySet().iterator().next();
-        go(first);
+        // Navigate to first item (guard against empty nav map)
+        if (!nav.isEmpty()) {
+            String first = nav.keySet().iterator().next();
+            go(first);
+        }
     }
 
     private void buildAdminUI() {
@@ -440,6 +442,8 @@ public final class MainFrame extends JFrame {
     private void logout() {
         if (session != null) try { facade.auth().logout(session.token()); } catch (Exception ignored) {}
         session = null;
+        AppTheme.clearListeners();
+        AppTheme.onThemeChange(this::applyTheme);
         loginPanel.reset();
         rootCards.show(root, "LOGIN");
     }
@@ -450,14 +454,13 @@ public final class MainFrame extends JFrame {
         root.setBackground(AppTheme.bg());
         content.setBackground(AppTheme.bg());
         loginPanel.applyTheme();
-        if (main != null && session != null) {
+        if (main != null && session != null && centerPanel != null) {
             main.remove(sidebar);
             sidebar = sidebar(session.role());
             main.add(sidebar, BorderLayout.WEST);
-            var center = (Container) main.getComponent(1);
-            center.remove(topBar);
+            centerPanel.remove(topBar);
             topBar = topBar();
-            center.add(topBar, BorderLayout.NORTH);
+            centerPanel.add(topBar, BorderLayout.NORTH);
             setTopTitle(active);
             refreshPanel(active);
         }

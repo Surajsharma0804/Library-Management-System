@@ -22,6 +22,7 @@ public final class BorrowPanel extends JPanel {
     private final LibraryFacade facade;
     private JTable table;
     private DefaultTableModel model;
+    private JComboBox<String> viewFilter;
     private Session session;
 
     private static final String[] COLS = {"Borrow ID", "Book ID", "Student Reg", "Issue Date", "Due Date", "Status", "Remaining"};
@@ -61,8 +62,14 @@ public final class BorrowPanel extends JPanel {
         renewBtn.addActionListener(e -> renewBook());
         lostBtn.addActionListener(e -> markLost());
 
+        viewFilter = new JComboBox<>(new String[]{"Active Records", "Overdue Only", "All History"});
+        viewFilter.setFont(AppTheme.BODY);
+        viewFilter.setPreferredSize(new Dimension(140, 38));
+        viewFilter.addActionListener(e -> refresh(session));
+
         JPanel acts = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         acts.setOpaque(false);
+        acts.add(viewFilter);
         acts.add(issueBtn);
         acts.add(returnBtn);
         acts.add(renewBtn);
@@ -103,10 +110,25 @@ public final class BorrowPanel extends JPanel {
         this.session = s;
         setBackground(AppTheme.bg());
         model.setRowCount(0);
-        List<BorrowRecord> recs = facade.borrows().findAllActive();
+
+        String view = viewFilter != null ? (String) viewFilter.getSelectedItem() : "Active Records";
+        List<BorrowRecord> recs = switch (view) {
+            case "Overdue Only" -> facade.borrows().findAllOverdue();
+            case "All History"  -> facade.borrowRepo().findAll();
+            default             -> facade.borrows().findAllActive();
+        };
+
         for (BorrowRecord r : recs) {
-            String status = r.isOverdue() ? "OVERDUE" : r.getStatus().name();
-            String remain = r.isOverdue() ? r.overdueDays() + "d overdue" : r.remainingDays() + " days";
+            String status = switch (r.getStatus()) {
+                case ACTIVE        -> r.isOverdue() ? "OVERDUE" : "BORROWED";
+                case RETURNED      -> "RETURNED";
+                case RETURNED_LATE -> "RETURNED (LATE)";
+                case LOST          -> "LOST";
+                default            -> r.getStatus().name();
+            };
+            String remain;
+            if (r.getStatus().name().startsWith("RETURNED")) remain = "—";
+            else remain = r.isOverdue() ? r.overdueDays() + "d overdue" : r.remainingDays() + " days";
             model.addRow(new Object[]{
                     r.getId(),
                     r.getBookId(),

@@ -93,10 +93,15 @@ public final class MyBorrowsPanel extends JPanel {
 
         List<BorrowRecord> all = facade.borrowRepo().findByRegistrationNumber(student.getRegistrationNumber());
         for (BorrowRecord r : all) {
-            String status = r.getStatus().name();
-            if (r.isOverdue() && "ACTIVE".equals(status)) status = "OVERDUE";
+            String status = switch (r.getStatus()) {
+                case ACTIVE         -> r.isOverdue() ? "OVERDUE" : "BORROWED";
+                case RETURNED       -> "RETURNED";
+                case RETURNED_LATE  -> "RETURNED (LATE)";
+                case LOST           -> "LOST";
+                default             -> r.getStatus().name();
+            };
             String remain;
-            if ("RETURNED".equals(r.getStatus().name())) remain = "-";
+            if (r.getStatus().name().startsWith("RETURNED")) remain = "—";
             else remain = r.isOverdue() ? r.overdueDays() + "d overdue" : r.remainingDays() + " days";
             model.addRow(new Object[]{
                     r.getId(),

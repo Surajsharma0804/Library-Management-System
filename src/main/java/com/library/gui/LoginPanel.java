@@ -46,17 +46,15 @@ public final class LoginPanel extends JPanel {
                 AppTheme.aa(g);
                 var g2 = (Graphics2D) g;
                 int w = getWidth(), h = getHeight();
-                // card background
                 g2.setColor(AppTheme.bgCard());
                 g2.fill(new RoundRectangle2D.Float(0, 0, w, h, AppTheme.CARD_R + 4, AppTheme.CARD_R + 4));
-                // subtle border
                 g2.setColor(AppTheme.border());
                 g2.setStroke(new BasicStroke(1f));
                 g2.draw(new RoundRectangle2D.Float(.5f, .5f, w - 1, h - 1, AppTheme.CARD_R + 4, AppTheme.CARD_R + 4));
             }
         };
         card.setOpaque(false);
-        card.setPreferredSize(new Dimension(420, 560));
+        card.setPreferredSize(new Dimension(420, 580));
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createEmptyBorder(28, 36, 28, 36));
 
@@ -67,23 +65,19 @@ public final class LoginPanel extends JPanel {
         topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
         topRow.add(AppTheme.themeBtn());
 
-        // branding logo badge
-        JLabel logo = new JLabel() {
-            @Override protected void paintComponent(Graphics g) {
-                AppTheme.aa(g);
-                var g2 = (Graphics2D) g;
-                g2.setColor(AppTheme.ACCENT);
-                g2.fill(new RoundRectangle2D.Float(0, 0, 52, 52, 12, 12));
-                g2.setColor(Color.WHITE);
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 18));
-                var fm = g2.getFontMetrics();
-                String s = "LMS";
-                g2.drawString(s, (52 - fm.stringWidth(s)) / 2, (52 + fm.getAscent() - fm.getDescent()) / 2);
-            }
-        };
-        logo.setPreferredSize(new Dimension(52, 52));
-        logo.setMaximumSize(new Dimension(52, 52));
+        // branding logo — load the actual app icon from resources
+        JLabel logo = new JLabel();
+        logo.setPreferredSize(new Dimension(56, 56));
+        logo.setMaximumSize(new Dimension(56, 56));
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        try {
+            var iconUrl = getClass().getResource("/images/app-logo.png");
+            if (iconUrl != null) {
+                ImageIcon raw = new ImageIcon(iconUrl);
+                Image scaled = raw.getImage().getScaledInstance(56, 56, Image.SCALE_SMOOTH);
+                logo.setIcon(new ImageIcon(scaled));
+            }
+        } catch (Exception ignored) {}
 
         JLabel title = lbl("University Central Library", AppTheme.H1, AppTheme.fg());
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -135,6 +129,10 @@ public final class LoginPanel extends JPanel {
         JLabel ver = lbl("Version 2.0.0 • Enterprise Edition", AppTheme.SMALL, AppTheme.fgMuted());
         ver.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        // info text for students
+        JLabel infoText = lbl("Contact your administrator for login credentials", AppTheme.SMALL, AppTheme.fgMuted());
+        infoText.setAlignmentX(Component.CENTER_ALIGNMENT);
+
         card.add(topRow);
         card.add(logo);
         card.add(Box.createVerticalStrut(10));
@@ -151,7 +149,9 @@ public final class LoginPanel extends JPanel {
         card.add(errPanel);
         card.add(Box.createVerticalStrut(16));
         card.add(signIn);
-        card.add(Box.createVerticalStrut(14));
+        card.add(Box.createVerticalStrut(10));
+        card.add(infoText);
+        card.add(Box.createVerticalStrut(10));
         card.add(ver);
 
         add(card);
@@ -180,6 +180,24 @@ public final class LoginPanel extends JPanel {
         }
         try {
             token = facade.auth().login(user, pass);
+
+            // Validate selected role matches the authenticated session role
+            String selectedRole = (String) roleBox.getSelectedItem();
+            Session session = facade.sessions().require(token);
+            String actualRole = session.role().name();
+            String expectedRole = switch (selectedRole) {
+                case "Administrator" -> "ADMIN";
+                case "Librarian"     -> "LIBRARIAN";
+                case "Student"       -> "STUDENT";
+                default              -> "";
+            };
+            if (!expectedRole.isEmpty() && !actualRole.equals(expectedRole)) {
+                facade.auth().logout(token);
+                token = null;
+                showError("This account is registered as " + actualRole + ", not " + selectedRole + ".");
+                return;
+            }
+
             errPanel.setVisible(false);
             onSuccess.run();
         } catch (Exception ex) {
@@ -193,6 +211,7 @@ public final class LoginPanel extends JPanel {
         errPanel.setVisible(true);
         revalidate(); repaint();
     }
+
 
     /* ── Public API ──────────────────────────────────────────────── */
 
@@ -211,3 +230,4 @@ public final class LoginPanel extends JPanel {
         userField.setText(saved);
     }
 }
+

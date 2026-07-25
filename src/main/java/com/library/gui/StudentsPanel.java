@@ -262,7 +262,12 @@ public final class StudentsPanel extends JPanel {
                         em.getText().trim(), ph.getText().trim(), dp.getText().trim(),
                         co.getText().trim(), Integer.parseInt(sm.getText().trim()), sc.getText().trim());
                 refresh(session);
-                AppTheme.success(this, "Student successfully registered!\nRegistration No: " + s.getRegistrationNumber());
+                AppTheme.success(this, "Student registered successfully!\n\n"
+                        + "Share these credentials with the student:\n"
+                        + "  Username: " + s.getUsername() + "\n"
+                        + "  Registration No: " + s.getRegistrationNumber() + "\n"
+                        + "  Default Password: changeme123\n\n"
+                        + "Student should change password after first login.");
             } catch (Exception ex) {
                 AppTheme.error(this, ex.getMessage());
             }

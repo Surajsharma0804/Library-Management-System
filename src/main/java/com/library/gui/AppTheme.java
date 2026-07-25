@@ -11,6 +11,7 @@ import javax.swing.table.JTableHeader;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -44,17 +45,25 @@ public final class AppTheme {
             UIManager.put("ScrollBar.width", 10);
             UIManager.put("ScrollBar.thumbArc", 6);
         } catch (Exception e) {
-            // fallback gracefully
+            System.err.println("[AppTheme] FlatLaf initialization failed, falling back to system L&F: " + e.getMessage());
+            try {
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception fallback) {
+                // last resort — use whatever default is available
+            }
         }
     }
 
     public static void toggle() {
         darkMode = !darkMode;
         initLookAndFeel();
-        listeners.forEach(Runnable::run);
+        new ArrayList<>(listeners).forEach(Runnable::run);
     }
 
     public static void onThemeChange(Runnable r) { listeners.add(r); }
+
+    /** Removes all theme-change listeners. Call on logout to prevent stale references. */
+    public static void clearListeners() { listeners.clear(); }
 
     /* ────────── Executive Colour Palette ─────────────────────────── */
 
@@ -95,20 +104,33 @@ public final class AppTheme {
 
     /* ────────── Typography Scale ────────────────────────────────── */
 
-    public static final Font H1       = new Font("Segoe UI", Font.BOLD, 22);
-    public static final Font H2       = new Font("Segoe UI", Font.BOLD, 17);
-    public static final Font H3       = new Font("Segoe UI", Font.BOLD, 14);
-    public static final Font BODY     = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font BODY_B   = new Font("Segoe UI", Font.BOLD, 13);
-    public static final Font SMALL    = new Font("Segoe UI", Font.PLAIN, 12);
-    public static final Font SMALL_B  = new Font("Segoe UI", Font.BOLD, 12);
-    public static final Font METRIC   = new Font("Segoe UI", Font.BOLD, 28);
-    public static final Font SIDEBAR  = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font INPUT    = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font TABLE    = new Font("Segoe UI", Font.PLAIN, 13);
-    public static final Font TBL_HDR  = new Font("Segoe UI", Font.BOLD, 12);
-    public static final Font LOGO     = new Font("Segoe UI", Font.BOLD, 18);
-    public static final Font BTN      = new Font("Segoe UI", Font.BOLD, 13);
+    private static final String FONT_FAMILY = resolveSystemFont();
+
+    /** Picks the best available sans-serif font for the current platform. */
+    private static String resolveSystemFont() {
+        String[] preferred = {"Segoe UI", ".SF NS Text", "Helvetica Neue", "Cantarell", "Noto Sans"};
+        var installed = Arrays.asList(GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getAvailableFontFamilyNames());
+        for (String name : preferred) {
+            if (installed.contains(name)) return name;
+        }
+        return "SansSerif";
+    }
+
+    public static final Font H1       = new Font(FONT_FAMILY, Font.BOLD, 22);
+    public static final Font H2       = new Font(FONT_FAMILY, Font.BOLD, 17);
+    public static final Font H3       = new Font(FONT_FAMILY, Font.BOLD, 14);
+    public static final Font BODY     = new Font(FONT_FAMILY, Font.PLAIN, 13);
+    public static final Font BODY_B   = new Font(FONT_FAMILY, Font.BOLD, 13);
+    public static final Font SMALL    = new Font(FONT_FAMILY, Font.PLAIN, 12);
+    public static final Font SMALL_B  = new Font(FONT_FAMILY, Font.BOLD, 12);
+    public static final Font METRIC   = new Font(FONT_FAMILY, Font.BOLD, 28);
+    public static final Font SIDEBAR  = new Font(FONT_FAMILY, Font.PLAIN, 13);
+    public static final Font INPUT    = new Font(FONT_FAMILY, Font.PLAIN, 13);
+    public static final Font TABLE    = new Font(FONT_FAMILY, Font.PLAIN, 13);
+    public static final Font TBL_HDR  = new Font(FONT_FAMILY, Font.BOLD, 12);
+    public static final Font LOGO     = new Font(FONT_FAMILY, Font.BOLD, 18);
+    public static final Font BTN      = new Font(FONT_FAMILY, Font.BOLD, 13);
 
     /* ────────── Dimensions ─────────────────────────────────────── */
 

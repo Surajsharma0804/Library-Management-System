@@ -205,15 +205,17 @@ public final class BooksPanel extends JPanel {
     }
 
     private static ImageIcon greyPlaceholderIcon;
+    private static boolean placeholderDarkMode;
 
     private ImageIcon greyPlaceholder() {
-        if (greyPlaceholderIcon == null) {
+        if (greyPlaceholderIcon == null || placeholderDarkMode != AppTheme.isDark()) {
+            placeholderDarkMode = AppTheme.isDark();
             BufferedImage img = new BufferedImage(40, 55, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2 = img.createGraphics();
             g2.setColor(AppTheme.border());
             g2.fillRect(0, 0, 40, 55);
             g2.setColor(AppTheme.fgMuted());
-            g2.setFont(new Font("Segoe UI", Font.PLAIN, 9));
+            g2.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 9));
             g2.drawString("No", 13, 25);
             g2.drawString("Cover", 7, 36);
             g2.dispose();
@@ -272,8 +274,17 @@ public final class BooksPanel extends JPanel {
         if (JOptionPane.showConfirmDialog(this, f, "Add New Book Record",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION) {
             try {
+                String qtyText = qt.getText().trim();
+                int quantity;
+                try {
+                    quantity = Integer.parseInt(qtyText);
+                    if (quantity <= 0) throw new NumberFormatException("non-positive");
+                } catch (NumberFormatException nfe) {
+                    AppTheme.error(this, "Total Quantity must be a positive whole number.");
+                    return;
+                }
                 Book b = facade.factory().createBook(is.getText().trim(), ti.getText().trim(),
-                        au.getText().trim(), Integer.parseInt(qt.getText().trim()));
+                        au.getText().trim(), quantity);
                 b.setPublisher(pu.getText().trim());
                 b.setCategory(ca.getText().trim());
                 facade.bookRepo().save(b);
