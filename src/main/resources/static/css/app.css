@@ -65,6 +65,49 @@
     --duration-slow:   350ms;
 }
 
+/* ── Dark Theme Override ──────────────────────────────────────── */
+[data-theme="dark"] {
+    --bg-primary:      #181818;
+    --bg-secondary:    #1e1e1e;
+    --bg-card:         #242424;
+    --bg-card-hover:   #2a2a2a;
+    --bg-elevated:     #2e2e2e;
+    --bg-input:        #2a2a2a;
+    --bg-overlay:      rgba(0, 0, 0, 0.6);
+
+    --border-primary:  #333333;
+    --border-hover:    #444444;
+    --border-focus:    #3d9a6a;
+
+    --text-primary:    #e8e6e3;
+    --text-secondary:  #a0a0a0;
+    --text-muted:      #707070;
+    --text-inverse:    #1c1c1c;
+
+    --accent:          #3d9a6a;
+    --accent-hover:    #4daa7a;
+    --accent-glow:     rgba(61, 154, 106, 0.12);
+    --accent-text:     #ffffff;
+
+    --green:           #3d9a6a;
+    --green-bg:        rgba(61, 154, 106, 0.12);
+    --red:             #d4634e;
+    --red-bg:          rgba(212, 99, 78, 0.12);
+    --blue:            #5a95cc;
+    --blue-bg:         rgba(90, 149, 204, 0.10);
+    --orange:          #cc9944;
+    --orange-bg:       rgba(204, 153, 68, 0.10);
+    --purple:          #9a7bd4;
+    --purple-bg:       rgba(154, 123, 212, 0.10);
+
+    --shadow-sm:       0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md:       0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg:       0 4px 20px rgba(0, 0, 0, 0.35);
+    --shadow-glow:     0 0 0 3px rgba(61, 154, 106, 0.2);
+
+    color-scheme: dark;
+}
+
 /* ── Reset & Base ─────────────────────────────────────────────── */
 *, *::before, *::after {
     margin: 0; padding: 0;
@@ -981,3 +1024,28 @@ h4 { font-size: 0.93rem; font-weight: 600; }
 .mt-lg    { margin-top: 22px; }
 .mb-md    { margin-bottom: 14px; }
 .w-full   { width: 100%; }
+
+/* ── Theme Toggle Button ──────────────────────────────────────── */
+.theme-toggle {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.theme-toggle:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
