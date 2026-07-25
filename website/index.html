@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Central Library Management System — Enterprise-grade library management for universities. Desktop app for Windows & macOS, plus a responsive PWA for mobile.">
+    <meta name="keywords" content="library management system, university library, book management, java application, open source">
+    <meta name="author" content="Suraj Sharma">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Central Library — Management System">
+    <meta property="og:description" content="Enterprise-grade library management for universities. Free & open source.">
+    <meta property="og:image" content="assets/screenshot-dashboard.png">
+    <meta property="og:type" content="website">
+    <title>Central Library — Management System</title>
+    <link rel="icon" href="assets/banner.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar" id="navbar">
+        <div class="container">
+            <a href="#" class="nav-brand">
+                <span class="nav-brand-icon">📚</span>
+                <span>Central Library</span>
+            </a>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#screenshots">Screenshots</a></li>
+                <li><a href="#download">Download</a></li>
+                <li><a href="#quickstart">Quick Start</a></li>
+                <li><a href="https://github.com/Surajsharma0804/Library-Management-System" target="_blank" rel="noopener">GitHub</a></li>
+                <li><a href="#download" class="nav-cta">Download Free</a></li>
+            </ul>
+            <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">
+                <span class="pulse-dot"></span>
+                Open Source &bull; Free Forever
+            </div>
+            <h1>
+                Library Management<br>
+                <span class="gradient">Made Simple.</span>
+            </h1>
+            <p class="hero-desc">
+                Enterprise-grade library management for universities.
+                Manage books, students, borrows, fines, and reports —
+                all from a single desktop app or any web browser.
+            </p>
+            <div class="hero-actions">
+                <a href="#download" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download for Free
+                </a>
+                <a href="https://github.com/Surajsharma0804/Library-Management-System" target="_blank" rel="noopener" class="btn btn-secondary">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    View on GitHub
+                </a>
+            </div>
+
+            <div class="hero-stats">
+                <div class="stat">
+                    <span class="stat-number">120+</span>
+                    <span class="stat-label">Tests Passing</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-number">5</span>
+                    <span class="stat-label">Platforms</span>
+                </div>
+                <div class="stat-divider"></div>
+                <div class="stat">
+                    <span class="stat-number">3</span>
+                    <span class="stat-label">User Roles</span>
+                </div>
+            </div>
+
+            <div class="hero-img fade-up">
+                <img src="assets/screenshot-dashboard.png" alt="Library Management System — Admin Dashboard" loading="lazy">
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-header section-center">
+                <div class="section-label">Features</div>
+                <h2 class="section-title">Everything you need to run a library</h2>
+                <p class="section-desc">Built for university libraries that need real inventory management, not just a demo.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card fade-up">
+                    <div class="feature-icon green">📖</div>
+                    <h3>Book Inventory</h3>
+                    <p>Full CRUD with ISBN-10/13 validation, quantity tracking, status management (available, borrowed, lost, under repair), and category organization.</p>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon orange">🔄</div>
+                    <h3>Circulation Management</h3>
+                    <p>Issue, return, and renew books. Automatic overdue detection, configurable loan periods, and max borrow limits per student.</p>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon red">💰</div>
+                    <h3>Fine Collection</h3>
+                    <p>Auto-calculated fines for late returns. Staff can collect payments or waive fines with a reason. Full payment history per student.</p>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon purple">👥</div>
+                    <h3>Student Management</h3>
+                    <p>Register students, generate login credentials, manage membership status. Students get a self-service portal for their borrows and fines.</p>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon green">📊</div>
+                    <h3>Reports &amp; Analytics</h3>
+                    <p>10+ report types with CSV export. Borrow trends, popular books, overdue reports, fine summaries, and student activity logs.</p>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon orange">🔒</div>
+                    <h3>Role-Based Security</h3>
+                    <p>Three roles — Admin, Librarian, Student — each with granular permissions. PBKDF2 password hashing, sessions, and audit logging.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshots -->
+    <section class="section section-alt" id="screenshots">
+        <div class="container">
+            <div class="section-header section-center">
+                <div class="section-label">Screenshots</div>
+                <h2 class="section-title">Clean, professional interface</h2>
+                <p class="section-desc">Light mode by default with a dark mode toggle. Designed for productivity.</p>
+            </div>
+            <div class="screenshots-grid">
+                <div class="screenshot fade-up">
+                    <img src="assets/screenshot-login.png" alt="Login Screen" loading="lazy">
+                    <div class="screenshot-label">Login</div>
+                </div>
+                <div class="screenshot fade-up">
+                    <img src="assets/screenshot-dashboard.png" alt="Admin Dashboard" loading="lazy">
+                    <div class="screenshot-label">Dashboard</div>
+                </div>
+                <div class="screenshot fade-up">
+                    <img src="assets/screenshot-catalog.png" alt="Book Catalog" loading="lazy">
+                    <div class="screenshot-label">Catalog</div>
+                </div>
+                <div class="screenshot fade-up">
+                    <img src="assets/screenshot-profile.png" alt="User Profile" loading="lazy">
+                    <div class="screenshot-label">Profile</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download -->
+    <section class="section downloads-section" id="download">
+        <div class="container">
+            <div class="section-header section-center">
+                <div class="section-label">Download</div>
+                <h2 class="section-title">Available on every platform</h2>
+                <p class="section-desc">Native desktop apps for Windows and macOS. Responsive web app for phones and tablets.</p>
+            </div>
+            <div class="download-grid">
+                <div class="download-card fade-up">
+                    <div class="platform-icon">🪟</div>
+                    <h3>Windows</h3>
+                    <p>.exe installer &bull; 78 MB</p>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/releases/latest" class="btn btn-download">Download .exe</a>
+                </div>
+                <div class="download-card fade-up">
+                    <div class="platform-icon">🍎</div>
+                    <h3>macOS</h3>
+                    <p>.dmg installer</p>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/releases/latest" class="btn btn-download">Download .dmg</a>
+                </div>
+                <div class="download-card fade-up">
+                    <div class="platform-icon">🐧</div>
+                    <h3>Linux / Any OS</h3>
+                    <p>.jar &bull; Requires Java 21</p>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/releases/latest" class="btn btn-download">Download .jar</a>
+                </div>
+                <div class="download-card fade-up">
+                    <div class="platform-icon">📱</div>
+                    <h3>Mobile (PWA)</h3>
+                    <p>Android &amp; iOS via browser</p>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System#quick-start" class="btn btn-download">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack -->
+    <section class="section" id="tech">
+        <div class="container">
+            <div class="section-header section-center">
+                <div class="section-label">Built With</div>
+                <h2 class="section-title">Professional tech stack</h2>
+                <p class="section-desc">No bloated frameworks. Clean Java architecture with proven tools.</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-item fade-up"><div class="tech-name">Java 21 LTS</div><div class="tech-desc">Core Language</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">Swing + FlatLaf</div><div class="tech-desc">Desktop GUI</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">Javalin</div><div class="tech-desc">Web Server</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">Jackson</div><div class="tech-desc">JSON Serialization</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">JUnit 5</div><div class="tech-desc">Unit Testing</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">jqwik</div><div class="tech-desc">Property Testing</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">PBKDF2-SHA256</div><div class="tech-desc">Password Security</div></div>
+                <div class="tech-item fade-up"><div class="tech-name">GitHub Actions</div><div class="tech-desc">CI/CD Pipeline</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="section section-alt" id="quickstart">
+        <div class="container">
+            <div class="section-header section-center">
+                <div class="section-label">Quick Start</div>
+                <h2 class="section-title">Up and running in 30 seconds</h2>
+                <p class="section-desc">Clone, build, run. No database setup, no configuration files, no Docker needed.</p>
+            </div>
+            <div class="code-block fade-up">
+                <div class="code-header">
+                    <span class="code-dot red"></span>
+                    <span class="code-dot yellow"></span>
+                    <span class="code-dot green"></span>
+                    <span class="code-title">Terminal</span>
+                </div>
+                <div class="code-body">
+                    <span class="c"># Clone the repository</span><br>
+                    <span class="cmd">git clone</span> https://github.com/Surajsharma0804/Library-Management-System.git<br>
+                    <span class="cmd">cd</span> Library-Management-System<br><br>
+                    <span class="c"># Build the project</span><br>
+                    <span class="cmd">mvn</span> clean package<br><br>
+                    <span class="c"># Run the desktop app</span><br>
+                    <span class="cmd">java</span> -jar target/library-management-system-1.0.0.jar<br><br>
+                    <span class="c"># Or start the web server (accessible from any device)</span><br>
+                    <span class="cmd">java</span> -cp target/library-management-system-1.0.0.jar com.library.WebMain<br>
+                    <span class="c"># → Open http://localhost:8080</span><br><br>
+                    <span class="c"># Default login: admin / admin@123</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section cta-section">
+        <div class="container section-center">
+            <h2 class="section-title">Ready to manage your library?</h2>
+            <p class="section-desc">Download the app, run it, and start managing books in minutes. No credit card, no signup, no strings attached.</p>
+            <div class="hero-actions" style="margin-top:32px;">
+                <a href="#download" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Now
+                </a>
+                <a href="https://github.com/Surajsharma0804/Library-Management-System" target="_blank" rel="noopener" class="btn btn-secondary">Star on GitHub ⭐</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <span class="nav-brand"><span class="nav-brand-icon">📚</span> Central Library</span>
+                    <p>Enterprise-grade library management<br>for universities.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Product</h4>
+                    <a href="#features">Features</a>
+                    <a href="#screenshots">Screenshots</a>
+                    <a href="#download">Download</a>
+                    <a href="#quickstart">Quick Start</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Resources</h4>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System" target="_blank" rel="noopener">GitHub</a>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/releases" target="_blank" rel="noopener">Releases</a>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/issues" target="_blank" rel="noopener">Report a Bug</a>
+                    <a href="https://github.com/Surajsharma0804/Library-Management-System/blob/main/LICENSE" target="_blank" rel="noopener">License (MIT)</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Central Library Management System. Built by <a href="https://github.com/Surajsharma0804" target="_blank" rel="noopener">Suraj Sharma</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
