@@ -48,8 +48,8 @@ Both share the same service layer, so data stays consistent regardless of which 
 ## Quick Start
 
 ```bash
-git clone https://github.com/Surajsharma0804/Library-Management-System.git
-cd Library-Management-System
+git clone https://github.com/Surajsharma0804/Library-Management-System_SURAJ.git
+cd Library-Management-System_SURAJ
 mvn clean package
 ```
 
